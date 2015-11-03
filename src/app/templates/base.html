@@ -1,5 +1,5 @@
 {% extends "bootstrap/base.html" %}
-{% block title %}CLARIAH QBer{% endblock %}
+{% block title %}CLARIAH Structured Data Hub{% endblock %}
 
 {% block metas %}
 <meta name="google-signin-client_id" content="693352032871-11385rcadjcf688bojnp2hr998g0llpm.apps.googleusercontent.com">
@@ -12,20 +12,17 @@
 {% block content %}
 
 
-<div id='qber'>
-
+<div class="row">
+  <div class="col-md-12">
+    <h3>Landing page for the CLARIAH Structured Data Hub</h3>
+  </div>
 </div>
-<div class="message-panel" id="message_panel">
-
-</div>
-
 {% endblock %}
 
 {% block scripts %}
 {{super()}}
 
 <script src="https://apis.google.com/js/platform.js" async defer></script>
-<script src="{{url_for('.static', filename='dist/js/bundle.js')}}"></script>
 
 {% endblock %}
 
