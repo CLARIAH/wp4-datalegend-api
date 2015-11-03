@@ -16,7 +16,6 @@ from collections import OrderedDict
 import config
 import util.sparql_client as sc
 import util.file_client as fc
-import util.inspector
 import util.git_client as git_client
 
 from app import app, socketio
