@@ -31,6 +31,10 @@ log.setLevel(logging.DEBUG)
 def index():
     return render_template('base.html')
 
+@app.route('/api-docs')
+def apidocs():
+    return render_template('api-docs.html')
+
 @app.route('/specs')
 def specs():
     swag = swagger(app)
