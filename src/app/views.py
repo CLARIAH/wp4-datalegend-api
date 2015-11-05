@@ -253,7 +253,6 @@ def get_community_dimensions():
                         description: An array of specifications as provided by LSD
                         type: array
                         items:
-                            id: DimensionItem
                             type: object
                             properties:
                                 id:
