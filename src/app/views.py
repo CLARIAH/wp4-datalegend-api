@@ -49,10 +49,10 @@ def specs():
     return jsonify(swag)
 
 
-@app.route('/github',methods=['POST'])
+@app.route('/trigger',methods=['POST'])
 def follow_github():
     data = json.loads(request.data)
-    print "New commit by: {}".format(data['commits'][0]['author']['name'])
+    log.info("New commit by: {}".format(data['commits'][0]['author']['name']))
     return "OK"
 
 
