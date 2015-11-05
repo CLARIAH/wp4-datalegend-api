@@ -57,7 +57,8 @@ def specs():
     swag['info']['version'] = "0.0.1"
     swag['info']['title'] = "CSDH API"
     swag['info']['description'] = "API Specification for the CLARIAH Structured Data Hub"
-    swag['host'] = "api.clariah-sdh.eculture.labs.vu.nl"
+    # swag['host'] = "api.clariah-sdh.eculture.labs.vu.nl"
+    swag['host'] = app.config['SERVER_NAME']
     swag['schemes'] = ['http']
     swag['basePath'] = '/'
     swag['swagger'] = '2.0'
@@ -245,25 +246,32 @@ def get_community_dimensions():
         '200':
             description: Community dimensions retrieved
             schema:
+                id: CommunityDimensions
                 type: object
                 properties:
                     dimensions:
                         description: An array of specifications as provided by LSD
                         type: array
                         items:
+                            id: DimensionItem
                             type: object
                             properties:
                                 id:
+                                    description: The internal ID provided by LSD
                                     type: integer
                                     format: int32
                                 label:
+                                    description: The name of the dimension variable
                                     type: string
                                 refs:
+                                    description: The number of uses of the dimension in the LOD cloud
                                     type: integer
                                     format: int32
                                 uri:
+                                    description: The URI of the variable
                                     type: string
                                 view:
+                                    descrription: Some HTML for rendering the variable (ugly leftover, ignored)
                                     type: string
                             required:
                                 - label
@@ -303,8 +311,10 @@ def get_community_schemes():
                                 type: object
                                 properties:
                                     label:
+                                        description: The name of the concept scheme
                                         type: string
                                     uri:
+                                        description: The URI of the concept scheme
                                         type: string
                                 required:
                                     - label
@@ -366,12 +376,16 @@ def get_community_definition():
                             type: object
                             properties:
                                 label:
+                                    description: The name of the variable
                                     type: string
                                 uri:
+                                    description: The URI of the variable
                                     type: string
                                 type:
+                                    description: The DataCube type for the variable
                                     type: string
                                 description:
+                                    description: A description of the variable, if available
                                     type: string
                                 codelist:
                                     description: An optional reference to a codelist URI for the variable
@@ -379,8 +393,10 @@ def get_community_definition():
                                         type: object
                                         properties:
                                             label:
+                                                description: The name of the codelist
                                                 type: string
                                             uri:
+                                                description: The URI of the codelist
                                                 type: string
                             required:
                                 - uri
@@ -522,10 +538,13 @@ def codelist():
                                     type: object
                                     properties:
                                         label:
+                                            description: The preferred label of the concept
                                             type: string
                                         uri:
+                                            description: The URI of the concept
                                             type: string
                                         notation:
+                                            description: An optional (shorthand) notation of the concept
                                             type: string
                                     required:
                                         - label
@@ -713,7 +732,7 @@ def browse():
           in: query
           description: The relative path to be browsed
           required: true
-          type: object
+          type: string
           defaultValue: .
       responses:
         '200':
@@ -734,9 +753,26 @@ def browse():
                     items:
                         description: A file, its path, name and its mimetype
                         schema:
+                            id: FileInfo
                             type: object
-
-
+                            properties:
+                                label:
+                                    description: The name of the file
+                                    type: string
+                                mimetype:
+                                    description: The guessed mimetype of the file (libmagic)
+                                    type: string
+                                type:
+                                    description: Whether it is a directory (dir) or normal file (file)
+                                    type: string
+                                uri:
+                                    description: The relative path of the file
+                                    type: string
+                            required:
+                                - label
+                                - mimetype
+                                - type
+                                - uri
             required:
                 - path
                 - parent
@@ -781,7 +817,7 @@ def iri():
           in: query
           description: The IRI to be checked for compliance
           required: true
-          type: object
+          type: string
       responses:
         '200':
           description: IRI converted
@@ -790,8 +826,10 @@ def iri():
             type: object
             properties:
                 iri:
+                    description: The fully compliant IRI
                     type: string
                 source:
+                    description: The input IRI
                     type: string
             required:
                 - iri
