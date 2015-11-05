@@ -39,11 +39,25 @@ def apidocs():
 
 @app.route('/specs')
 def specs():
+    """
+    Provides Swagger specification for the CSDH API
+    ---
+    tags:
+        - Base
+    responses:
+        '200':
+          description: Swagger specification
+          type: object
+        default:
+          description: Unexpected error
+          schema:
+            $ref: "#/definitions/Message"
+    """
     swag = swagger(app)
     swag['info']['version'] = "0.0.1"
     swag['info']['title'] = "CSDH API"
-    swag['info']['description'] = "API for the CLARIAH Structured Data Hub"
-    swag['host'] = "localhost:5000"
+    swag['info']['description'] = "API Specification for the CLARIAH Structured Data Hub"
+    swag['host'] = "api.clariah-sdh.eculture.labs.vu.nl"
     swag['schemes'] = ['http']
     swag['basePath'] = '/'
     swag['swagger'] = '2.0'
@@ -55,23 +69,28 @@ def specs():
 def follow_github():
     """
     Responds to triggers initiated by GitHub webhooks (if activated in the configuration)
+    Make sure to set the appropriate parameters in `config.py`
     ---
       tags:
         - Base
+      consumes:
+        - text/json
+      parameters:
+        - name: data
+          in: body
+          description: The GitHub webhook payload
+          required: true
+          type: object
       responses:
         '200':
           description: Git repository updated
           type: object
-          properties:
-            code:
-                type: integer
-                format: int32
-            message:
-                string
+          schema:
+            $ref: "#/definitions/Message"
         default:
           description: Unexpected error
           schema:
-            id: Error
+            id: Message
             type: object
             properties:
               code:
@@ -85,7 +104,7 @@ def follow_github():
 
     # Retrieve the data from POST
     data = json.loads(request.data)
-
+    log.debug(data)
     # Check whether the data is about the repository & branch we're trying to track
     if (str(data['ref']) != config.FOLLOW_REF or str(data['repository']['url']) != config.FOLLOW_REPO):
         raise(Exception("This application is not setup to respond to pushes to this particular repository or branch"))
@@ -93,9 +112,10 @@ def follow_github():
     log.info("New commit by: {}".format(data['commits'][0]['author']['name']))
     log.info("Updating code repo")
 
-
+    # Run the git pull command from the `src` directory (one up)
     message = sp.check_output(['git', 'pull'],cwd='..')
 
+    # Format a response
     response = {'message': message, 'code': 200}
     return jsonify(response)
 
@@ -138,13 +158,14 @@ def get_dataset_definition():
           description: The path to the dataset file that is to be loaded
           required: true
           type: string
+          defaultValue: derived/utrecht_1829_clean_01.csv
       tags:
         - Dataset
       responses:
         '200':
           description: Dataset metadata retrieved
           schema:
-            id: DatasetMetadata
+            id: DatasetSchema
             type: object
             properties:
               name:
@@ -163,14 +184,7 @@ def get_dataset_definition():
         default:
           description: Unexpected error
           schema:
-            id: Error
-            type: object
-            properties:
-              code:
-                type: integer
-                format: int32
-              message:
-                type: string
+            $ref: "#/definitions/Message"
     """
     dataset_file = request.args.get('file', False)
 
@@ -231,18 +245,36 @@ def get_community_dimensions():
         '200':
             description: Community dimensions retrieved
             schema:
-                id: CommunityDimensionsResponse
                 type: object
                 properties:
                     dimensions:
-                        description: A dictionary of specifications as provided by LSD
-                        type: object
+                        description: An array of specifications as provided by LSD
+                        type: array
+                        items:
+                            type: object
+                            properties:
+                                id:
+                                    type: integer
+                                    format: int32
+                                label:
+                                    type: string
+                                refs:
+                                    type: integer
+                                    format: int32
+                                uri:
+                                    type: string
+                                view:
+                                    type: string
+                            required:
+                                - label
+                                - refs
+                                - uri
                 required:
                     - dimensions
     default:
         description: Unexpected error
         schema:
-          $ref: "#/definitions/Error"
+          $ref: "#/definitions/Message"
     """
     dimensions_response = {'dimensions': get_dimensions()}
     return jsonify(dimensions_response)
@@ -260,13 +292,11 @@ def get_community_schemes():
         '200':
             description: Community concept schemes retrieved
             schema:
-                id: CommunityConceptsResponse
                 type: object
                 properties:
                     schemes:
                         description: An array of concept scheme labels and URIs
                         schema:
-                            id: SchemaDefinition
                             type: array
                             items:
                                 description: An object specifying the label and URI of a concept scheme
@@ -276,18 +306,20 @@ def get_community_schemes():
                                         type: string
                                     uri:
                                         type: string
+                                required:
+                                    - label
+                                    - uri
                 required:
                     - schemes
         default:
             description: Unexpected error
             schema:
-              $ref: "#/definitions/Error"
+              $ref: "#/definitions/Message"
     """
     schemes_response = {'schemes': get_schemes() + get_csdh_schemes()}
     return jsonify(schemes_response)
 
 def read_cache(dataset_path):
-
     dataset_cache_filename = "{}.cache.json".format(dataset_path)
 
     if os.path.exists(dataset_cache_filename):
@@ -306,45 +338,59 @@ def write_cache(dataset_path, data):
         json.dump(data, dataset_cache_file)
 
 
-@app.route('/menu', methods=['POST'])
-def menu():
-    """Render the menu for the items specified in the POST data (i.e. the variable names)"""
-    req_json = request.get_json(force=True)
-    log.debug(req_json)
-
-    items = req_json['items']
-    log.debug(items)
-
-    return render_template('menu.html', items=items)
-
-
-@app.route('/variable/ui', methods=['POST'])
-def variable():
-    """Takes the variable details from the POST data and returns the UI for editing"""
-    req_json = request.get_json(force=True)
-    log.debug(req_json)
-
-    variable_id = req_json['id']
-    if 'description' in req_json:
-        description = req_json['description']
-    else:
-        description = req_json['id']
-    if 'examples' in req_json:
-        examples = req_json['examples']
-    else:
-        examples = []
-
-    log.debug(examples)
-
-    return render_template('variable.html',
-                           id=variable_id,
-                           description=description,
-                           examples=examples)
-
-
-@app.route('/variable/resolve', methods=['GET'])
-def dimension():
-    """Resolves the URI of a variable and retrieves its definition"""
+@app.route('/community/definition', methods=['GET'])
+def get_community_definition():
+    """
+    Get the SDMX variable definition from the Web, LOD Cloud or CSDH if available
+    First checks whether we already know the variable, otherwise resolves the URI
+    of the variable as a URL, and retrieves its definition.
+    ---
+    tags:
+        - Community
+    parameters:
+        - name: uri
+          in: query
+          description: The URI of the variable for which the definition is to be retrieved
+          required: true
+          type: string
+          defaultValue: http://purl.org/linked-data/sdmx/2009/dimension#sex
+    responses:
+        '200':
+            description: The variable definition was returned succesfully
+            schema:
+                type: object
+                properties:
+                    definition:
+                        description: A variable definition
+                        schema:
+                            type: object
+                            properties:
+                                label:
+                                    type: string
+                                uri:
+                                    type: string
+                                type:
+                                    type: string
+                                description:
+                                    type: string
+                                codelist:
+                                    description: An optional reference to a codelist URI for the variable
+                                    schema:
+                                        type: object
+                                        properties:
+                                            label:
+                                                type: string
+                                            uri:
+                                                type: string
+                            required:
+                                - uri
+                required:
+                    - definition
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
     uri = request.args.get('uri', False)
 
     if uri:
@@ -367,7 +413,7 @@ def dimension():
                 PREFIX dct: <http://purl.org/dc/terms/>
                 PREFIX qb: <http://purl.org/linked-data/cube#>
 
-                SELECT (<{URI}> as ?uri) ?type ?label ?description ?measured_concept WHERE {{
+                SELECT (<{URI}> as ?uri) ?type ?label ?description ?concept_uri WHERE {{
                     OPTIONAL
                     {{
                         <{URI}>   rdfs:label ?label .
@@ -424,26 +470,73 @@ def dimension():
 
             log.debug(codelist_results)
 
-            if len(codelist_results) > 0 :
+            if len(codelist_results)>0:
+                codelist = sc.dictize(codelist_results)
+                log.debug(codelist)
                 # Only take the first result (won't allow multiple code lists)
                 # TODO: Check how this potentially interacts with user-added codes and lists
-                codelist = sc.dictize(codelist_results)[0]
-                variable_definition['codelist'] = codelist
+                variable_definition['codelist'] = codelist[0]
+            else:
+                log.debug("No codelist for this variable")
+
 
             log.debug("Definition for: {}".format(uri))
             log.debug(variable_definition)
-            return jsonify(variable_definition)
+            return jsonify({'definition': variable_definition})
 
         else:
-            return 'error'
+            raise(Exception("Could not find the definition for <{}> online, nor in the CSDH".format(uri)))
 
     else:
-        return 'error'
+        raise(Exception("No `uri` parameter given"))
 
 
-@app.route('/codelist/concepts', methods=['GET'])
+@app.route('/community/concepts', methods=['GET'])
 def codelist():
-    """Gets the SKOS Concepts belonging to the SKOS Scheme or Collection identified by the URI parameter"""
+    """
+    Get the list of concepts belonging to the code list
+    Gets the SKOS Concepts belonging to the SKOS Scheme or Collection identified by the URI parameter
+    ---
+    tags:
+        - Community
+    parameters:
+        - name: uri
+          in: query
+          description: The URI of the codelist for which the concepts are to be retrieved
+          required: true
+          type: string
+          defaultValue: http://purl.org/linked-data/sdmx/2009/code#sex
+    responses:
+        '200':
+            description: The codes were retrieved succesfully
+            schema:
+                type: object
+                properties:
+                    concepts:
+                        description: A list of concepts belonging to the codelist
+                        schema:
+                            type: array
+                            items:
+                                description: A concept definition
+                                schema:
+                                    type: object
+                                    properties:
+                                        label:
+                                            type: string
+                                        uri:
+                                            type: string
+                                        notation:
+                                            type: string
+                                    required:
+                                        - label
+                                        - uri
+                required:
+                    - concepts
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
     uri = request.args.get('uri', False)
     log.debug('Retrieving concepts for '+ uri)
 
@@ -502,33 +595,87 @@ def codelist():
         except Exception as e:
             log.error(e)
             log.error('Could not retrieve anything from the SDH')
-
             sdh_codelist = []
 
         if lod_codelist == [] and sdh_codelist == []:
-            return jsonify({'response': 'error', 'message': str(e)})
+            raise(Exception("Could not retrieve anything from LOD or CSDH"))
         else:
-            return jsonify({'codelist': lod_codelist + sdh_codelist})
+            return jsonify({'concepts': lod_codelist + sdh_codelist})
+    else:
+        raise(Exception("Missing required parameter: `uri`"))
 
 
-@app.route('/save', methods=['POST'])
-def save():
-    """Saves the dataset to cache"""
+@app.route('/dataset/save', methods=['POST'])
+def dataset_save():
+    """
+    Save the dataset to the CSDH file cache
+    Note that this does not convert the dataset to RDF, nor does it upload it to the CSDH repository
+    ---
+    tags:
+        - Dataset
+    parameters:
+        - name: dataset
+          in: body
+          description: The dataset definition that is to be saved to cache.
+          required: true
+          type: object
+          schema:
+            $ref: "#/definitions/DatasetSchema"
+    responses:
+        '200':
+            description: The dataset was succesfully saved to the file cache
+            schema:
+                $ref: "#/definitions/Message"
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
     req_json = request.get_json(force=True)
 
     dataset = req_json['dataset']
     dataset_path = dataset['path']
 
-    try :
+    try:
         write_cache(dataset_path, dataset)
-        return jsonify({'response': 'success'})
+        return jsonify({'code': 200, 'message': 'Success'})
     except Exception as e:
-        return jsonify({'response': 'error', 'message': str(e)})
+        raise(e)
 
 
-@app.route('/submit', methods=['POST'])
-def submit():
-    """Uses the DataCube converter to convert the JSON representation of variables to RDF DataCube"""
+@app.route('/dataset/submit', methods=['POST'])
+def dataset_submit():
+    """
+    Submit the dataset definition to the CSDH
+    Uses the DataCube converter to convert the JSON representation of variables to RDF DataCube and commits
+    the resulting RDF to the CSDH repository
+    ---
+    tags:
+        - Dataset
+    parameters:
+        - name: dataset
+          in: body
+          description: The dataset definition that is to be converted and committed to the CSDH repository
+          required: true
+          schema:
+            type: object
+            properties:
+                dataset:
+                    description: The dataset definition
+                    $ref: "#/definitions/DatasetSchema"
+                profile:
+                    description: The user profile of the person uploading the dataset
+                    type: object
+    responses:
+        '200':
+            description: The dataset was converted succesfully
+            schema:
+                $ref: "#/definitions/Message"
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
 
     req_json = request.get_json(force=True)
     variables = req_json['variables']
@@ -550,12 +697,62 @@ def submit():
     query = sc.make_update(dataset)
     result = sc.sparql_update(query)
 
-    return result
+    return jsonify({'code': 200, 'message': result})
 
 
 @app.route('/browse', methods=['GET'])
 def browse():
-    """Takes a relative path, and returns a list of files/directories at that location as JSON"""
+    """
+    Browse the dataset file cache
+    Takes a relative path, and returns a list of files/directories at that location as JSON
+    ---
+      tags:
+        - Base
+      parameters:
+        - name: path
+          in: query
+          description: The relative path to be browsed
+          required: true
+          type: object
+          defaultValue: .
+      responses:
+        '200':
+          description: Path retrieved
+          schema:
+            description: A path specification
+            type: object
+            properties:
+                path:
+                    description: The current path
+                    type: string
+                parent:
+                    description: The parent path
+                    type: string
+                files:
+                    description: The list of files found at this location
+                    type: array
+                    items:
+                        description: A file, its path, name and its mimetype
+                        schema:
+                            type: object
+
+
+            required:
+                - path
+                - parent
+                - files
+        default:
+          description: Unexpected error
+          schema:
+            id: Message
+            type: object
+            properties:
+              code:
+                type: integer
+                format: int32
+              message:
+                type: string
+    """
     path = request.args.get('path', None)
 
     if not path:
@@ -569,15 +766,57 @@ def browse():
 
 @app.route('/iri', methods=['GET'])
 def iri():
-    """Bake an IRI using iribaker"""
+    """
+    Bake an IRI using iribaker
+    Checks an IRI for compliance with RFC and converts invalid characters to underscores, if possible.
+    **NB**: No roundtripping, this procedure may result in identity smushing: two input-IRI's may be
+    mapped to the same output-IRI.
+    ---
+      tags:
+        - Base
+      consumes:
+        - text/json
+      parameters:
+        - name: iri
+          in: query
+          description: The IRI to be checked for compliance
+          required: true
+          type: object
+      responses:
+        '200':
+          description: IRI converted
+          schema:
+            description: A converted IRI result
+            type: object
+            properties:
+                iri:
+                    type: string
+                source:
+                    type: string
+            required:
+                - iri
+                - source
+        default:
+          description: Unexpected error
+          schema:
+            id: Message
+            type: object
+            properties:
+              code:
+                type: integer
+                format: int32
+              message:
+                type: string
+    """
 
-    unsafe_iri = request.args.get('iri',None)
+    unsafe_iri = request.args.get('iri', None)
 
     if unsafe_iri is not None:
-        response = {'result': iribaker.to_iri(unsafe_iri)}
-    else :
-        response = {'result': 'error'}
-    return jsonify(response)
+        response = {'iri': iribaker.to_iri(unsafe_iri), 'source': unsafe_iri}
+        return jsonify(response)
+    else:
+        raise(Exception("The IRI {} could not be converted to a compliant IRI".format(unsafe_iri)))
+
 
 
 def get_dimensions():
@@ -587,9 +826,11 @@ def get_dimensions():
 
     dimensions = get_lsd_dimensions() + get_csdh_dimensions()
 
-    dimensions_as_dict = {dim['uri']: dim for dim in dimensions}
+    # dimensions_as_dict = {dim['uri']: dim for dim in dimensions}
+    sorted_dimensions = sorted(dimensions,key=lambda t: t['refs'])
 
-    return OrderedDict(sorted(dimensions_as_dict.items(), key=lambda t: t[1]['refs']))
+    # sorted_dimensions = OrderedDict(sorted(dimensions_as_dict.items(), key=lambda t: t[1]['refs']))
+    return sorted_dimensions
 
 def get_lsd_dimensions():
     """Loads the list of Linked Statistical Data dimensions (variables) from the LSD portal"""
