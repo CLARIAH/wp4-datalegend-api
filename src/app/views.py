@@ -8,6 +8,8 @@ import logging
 import requests
 import json
 import os
+import gevent.subprocess as sp
+
 import iribaker
 from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import Graph
@@ -51,9 +53,52 @@ def specs():
 
 @app.route('/trigger',methods=['POST'])
 def follow_github():
+    """
+    Responds to triggers initiated by GitHub webhooks (if activated in the configuration)
+    ---
+      tags:
+        - Base
+      responses:
+        '200':
+          description: Git repository updated
+          type: object
+          properties:
+            code:
+                type: integer
+                format: int32
+            message:
+                string
+        default:
+          description: Unexpected error
+          schema:
+            id: Error
+            type: object
+            properties:
+              code:
+                type: integer
+                format: int32
+              message:
+                type: string
+    """
+    if not config.FOLLOW_GITHUB:
+        raise(Exception("This application is not setup to respond to GitHub webhook data"))
+
+    # Retrieve the data from POST
     data = json.loads(request.data)
+
+    # Check whether the data is about the repository & branch we're trying to track
+    if (str(data['ref']) != config.FOLLOW_REF or str(data['repository']['url']) != config.FOLLOW_REPO):
+        raise(Exception("This application is not setup to respond to pushes to this particular repository or branch"))
+
     log.info("New commit by: {}".format(data['commits'][0]['author']['name']))
-    return "OK"
+    log.info("Updating code repo")
+
+
+    message = sp.check_output(['git', 'pull'],cwd='..')
+
+    response = {'message': message, 'code': 200}
+    return jsonify(response)
+
 
 
 # Socket IO handlers

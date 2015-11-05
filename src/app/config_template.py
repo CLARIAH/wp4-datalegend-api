@@ -26,4 +26,5 @@ AUTH = ('admin','admin')
 
 # Respond to GitHub webhooks
 FOLLOW_GITHUB = True
-FOLLOW_BRANCH = 'master'
+FOLLOW_REPO = 'https://github.com/CLARIAH/wp4-csdh-api'
+FOLLOW_REF = 'refs/heads/master'

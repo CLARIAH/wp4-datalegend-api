@@ -13,6 +13,11 @@ def get_repository(data_path):
 
     return git
 
+def pull(data_path):
+    git = get_repository(data_path)
+    response = git.pull()
+
+    return response
 
 def add_file(data_path, absolute_path, author, email):
     git = get_repository(data_path)
