@@ -178,10 +178,25 @@ def get_dataset_definition():
               mappings:
                 description: Any cached mappings for variables in the dataset
                 type: object
+              values:
+                description: A dictionary of variable names and values occurring in the dataset
+                type: object
+                additionalProperties:
+                    description: The values and frequencies for this variable
+                    schema:
+                        type: array
+                        items:
+                            type: object
+                            id:
+                                type: string
+                            count:
+                                type: integer
+                                format: int32
             required:
                 - name
                 - path
                 - mappings
+                - values
         default:
           description: Unexpected error
           schema:
@@ -226,7 +241,6 @@ def get_dataset_definition():
         dataset_definition_response = {
             'name': dataset_name,
             'path': dataset_path,
-            'metadata': adapter.get_metadata(),
             'values': adapter.get_values(),
             'mappings': {}
         }
