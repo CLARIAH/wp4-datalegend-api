@@ -4,6 +4,7 @@ from flask.ext.socketio import emit
 from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
 
+import traceback
 import logging
 import requests
 import json
@@ -114,12 +115,11 @@ def follow_github():
     log.info("Updating code repo")
 
     # Run the git pull command from the `src` directory (one up)
-    message = sp.check_output(['git', 'pull'],cwd='..')
+    message = sp.check_output(['git', 'pull'], cwd='..')
 
     # Format a response
     response = {'message': message, 'code': 200}
     return jsonify(response)
-
 
 
 # Socket IO handlers
@@ -145,7 +145,10 @@ def error_response(ex):
     response.status_code = (code
                             if isinstance(ex, HTTPException)
                             else 500)
+
+    log.error(traceback.format_exc())
     return response
+
 
 @app.route('/dataset/definition')
 def get_dataset_definition():
@@ -175,23 +178,52 @@ def get_dataset_definition():
               path:
                 type: string
                 description: The location of the dataset on disk (server side)
-              mappings:
-                description: Any cached mappings for variables in the dataset
-                type: object
-              values:
+              variables:
                 description: A dictionary of variable names and values occurring in the dataset
                 type: object
-                additionalProperties:
-                    description: The values and frequencies for this variable
-                    schema:
-                        type: array
-                        items:
-                            type: object
-                            id:
+                properties:
+                    default:
+                        description: The default uri for this variable name
+                        type: string
+                    uri:
+                        description: The assigned uri for this variable name
+                        type: string
+                    description:
+                        description: The description of the variable
+                        type: string
+                    type:
+                        description: The type of variable (coded, identifier, other, community)
+                        type: string
+                    codelist:
+                        description: If appliccable, the codelist for this variable
+                        type: object
+                        properties:
+                            default:
+                                description: The default URI for the codelist
                                 type: string
-                            count:
-                                type: integer
-                                format: int32
+                            uri:
+                                description: The assigned URI for the codelist
+                                type: string
+                    values:
+                        description: An array with values and frequencies for this variable name
+                        additionalProperties:
+                            description: The values and frequencies for this variable
+                            schema:
+                                type: object
+                                items:
+                                    type: object
+                                    default:
+                                        description: The default URI representation for this value
+                                        type: string
+                                    uri:
+                                        description: The assigned URI representation for this value
+                                        type: string
+                                    label:
+                                        description: The value as a label
+                                        type: string
+                                    count:
+                                        type: integer
+                                        format: int32
             required:
                 - name
                 - path
@@ -229,20 +261,18 @@ def get_dataset_definition():
             'header': True
         }
 
+        log.debug("Initializing adapter for dataset")
         # Intialize a file a dapter for the dataset
         adapter = loader.adapter.get_adapter(dataset)
 
-        (head, dataset_local_name) = os.path.split(dataset_file)
-        (dataset_name, extension) = os.path.splitext(dataset_local_name)
 
-
-
+        log.debug("Preparing dataset definition response")
         # Prepare the data dictionary
         dataset_definition_response = {
-            'name': dataset_name,
+            'name': adapter.get_dataset_name(),
+            'uri': adapter.get_dataset_uri(),
             'path': dataset_path,
-            'values': adapter.get_values(),
-            'mappings': {}
+            'variables': adapter.get_values(),
         }
 
         return jsonify(dataset_definition_response)

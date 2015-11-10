@@ -9,13 +9,22 @@ from collections import OrderedDict, defaultdict
 # from savReaderWriter import SavReader, SavHeaderReader
 import csv
 import pandas as pd
-
+import iribaker
+import os
+from app import config
 
 
 class Adapter(object):
     def __init__(self, dataset):
         self.dataset = dataset
 
+        (head, dataset_local_name) = os.path.split(dataset['filename'])
+        (dataset_name, extension) = os.path.splitext(dataset_local_name)
+
+        self.dataset_name = dataset_name
+        self.dataset_uri = iribaker.to_iri(config.QBR_BASE + dataset_name)
+
+        print "Initialized adapter"
         return
 
     def get_reader(self):
@@ -24,10 +33,16 @@ class Adapter(object):
     def get_header(self):
         return self.header
 
+    def get_dataset_uri(self):
+        return self.dataset_uri
+
+    def get_dataset_name(self):
+        return self.dataset_name
+
     def get_metadata(self):
         if self.metadata:
             return self.metadata
-        else :
+        else:
             return None
 
     def load_metadata(self):
@@ -70,7 +85,9 @@ class Adapter(object):
             return False
 
     def get_values(self):
-        """Return all unique values, and converts it to samples for each column."""
+        """
+        Return all unique values, and converts it to samples for each column.
+        """
 
         # Get all unique values for each column
         stats = {}
@@ -81,12 +98,27 @@ class Adapter(object):
 
             for i in counts.index:
                 stat = {}
-                stat['id'] = i
+                stat['label'] = i
+                stat['default'] = iribaker.to_iri("{}/value/{}/{}".format(self.dataset_uri, col, i))
+                stat['uri'] = stat['default']
                 stat['count'] = counts[i]
                 istats.append(stat)
 
+            variable_uri = iribaker.to_iri("{}/variable/{}".format(self.dataset_uri, col))
+            codelist_uri = iribaker.to_iri("{}/codelist/{}".format(self.dataset_uri, col))
 
-            stats[col] = istats
+            codelist = {
+                'default': codelist_uri,
+                'uri': codelist_uri
+            }
+            stats[col] = {
+                'default': variable_uri,
+                'uri': variable_uri,
+                'description': "The variable '{}' as taken from the '{}' dataset.".format(i, self.dataset_name),
+                'type': 'coded',
+                'values': istats,
+                'codelist': codelist
+            }
 
         return stats
 
