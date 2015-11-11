@@ -188,11 +188,17 @@ def get_dataset_definition():
                     uri:
                         description: The assigned uri for this variable name
                         type: string
+                    label:
+                        description: The label for this variable name (i.e. the name itself)
+                        type: string
                     description:
                         description: The description of the variable
                         type: string
+                    category:
+                        description: The category of the variable (coded, identifier, other, community)
+                        type: string
                     type:
-                        description: The type of variable (coded, identifier, other, community)
+                        description: The DataCube type of the variable (sdmx:DimensionProperty, ... etc.)
                         type: string
                     codelist:
                         description: If appliccable, the codelist for this variable
@@ -203,6 +209,9 @@ def get_dataset_definition():
                                 type: string
                             uri:
                                 description: The assigned URI for the codelist
+                                type: string
+                            label:
+                                description: The label for the codelist
                                 type: string
                     values:
                         description: An array with values and frequencies for this variable name

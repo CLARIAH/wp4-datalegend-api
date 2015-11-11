@@ -109,13 +109,16 @@ class Adapter(object):
 
             codelist = {
                 'default': codelist_uri,
-                'uri': codelist_uri
+                'uri': codelist_uri,
+                'label': "Codelist generated from the values for '{}'".format(i)
             }
             stats[col] = {
                 'default': variable_uri,
                 'uri': variable_uri,
-                'description': "The variable '{}' as taken from the '{}' dataset.".format(i, self.dataset_name),
-                'type': 'coded',
+                'label': col,
+                'description': "The variable '{}' as taken from the '{}' dataset.".format(col, self.dataset_name),
+                'category': 'coded',
+                'type': 'http://purl.org/linked-data/cube#DimensionProperty', # This is the default
                 'values': istats,
                 'codelist': codelist
             }
