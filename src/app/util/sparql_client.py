@@ -110,11 +110,15 @@ def ask(uri, template = "ASK {{ <{}> ?p ?o }}", endpoint_url = config.ENDPOINT_U
         return json_result
 
 
-def post_data(data, graph_uri, endpoint_url=config.CRUD_URL):
-    result = requests.post(endpoint_url, data=data, params={'graph-uri': graph_uri}, headers={'Content-Type': 'application/turtle'}, auth=config.CRUD_AUTH)
+def post_data(data, graph_uri=None, endpoint_url=config.CRUD_URL):
+    if not(graph_uri is None):
+        params = {'graph-uri': graph_uri}
+    else:
+        params = {}
+    result = requests.post(endpoint_url, data=data, params=params, headers={'Content-Type': 'application/turtle'}, auth=config.CRUD_AUTH)
 
     print "SPARQL CRUD status: ", result.status_code
-    print "SPARQL CRUD response:\n ", result.content[:200]
+    print "SPARQL CRUD response:\n ", result.content
 
     return result.content
 

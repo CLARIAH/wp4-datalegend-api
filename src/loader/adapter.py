@@ -99,6 +99,7 @@ class Adapter(object):
             for i in counts.index:
                 stat = {}
                 stat['label'] = i
+                stat['literal'] = i
                 stat['default'] = iribaker.to_iri("{}/value/{}/{}".format(self.dataset_uri, col, i))
                 stat['uri'] = stat['default']
                 stat['count'] = counts[i]
@@ -110,7 +111,7 @@ class Adapter(object):
             codelist = {
                 'default': codelist_uri,
                 'uri': codelist_uri,
-                'label': "Codelist generated from the values for '{}'".format(i)
+                'label': "Codelist generated from the values for '{}'".format(col)
             }
             stats[col] = {
                 'default': variable_uri,
