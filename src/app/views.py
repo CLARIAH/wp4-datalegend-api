@@ -230,6 +230,8 @@ def get_dataset_definition():
                                     label:
                                         description: The value as a label
                                         type: string
+                                    literal:
+                                        description: The assigned Literal representation for this value
                                     count:
                                         type: integer
                                         format: int32
