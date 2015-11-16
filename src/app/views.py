@@ -280,7 +280,7 @@ def get_dataset_definition():
         dataset_definition_response = {
             'name': adapter.get_dataset_name(),
             'uri': adapter.get_dataset_uri(),
-            'path': dataset_path,
+            'file': dataset_file,
             'variables': adapter.get_values(),
         }
 
@@ -705,7 +705,7 @@ def dataset_save():
     req_json = request.get_json(force=True)
 
     dataset = req_json['dataset']
-    dataset_path = dataset['path']
+    dataset_path = dataset_path = os.path.join(config.base_path, dataset['file'])
 
     try:
         write_cache(dataset_path, dataset)
@@ -734,8 +734,8 @@ def dataset_submit():
                 dataset:
                     description: The dataset definition
                     $ref: "#/definitions/DatasetSchema"
-                profile:
-                    description: The user profile of the person uploading the dataset
+                user:
+                    description: The Google user profile of the person uploading the dataset
                     type: object
     responses:
         '200':
@@ -749,26 +749,26 @@ def dataset_submit():
     """
 
     req_json = request.get_json(force=True)
-    variables = req_json['variables']
-    dataset = req_json['file']
-    dataset_path = req_json['path']
-    profile = req_json['profile']
-
-    source_hash = git_client.add_file(dataset_path, profile['name'], profile['email'])
+    dataset = req_json['dataset']
+    user = req_json['user']
+    source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
     log.debug("Using {} as dataset hash".format(source_hash))
 
-    dataset = datacube.converter.data_structure_definition(dataset, variables, profile, dataset_path, source_hash)
+    rdf_dataset = datacube.converter.data_structure_definition(user, dataset['name'], dataset['uri'], dataset['variables'], dataset['file'], source_hash)
 
-    data = util.inspector.update(dataset)
-    socketio.emit('update', {'data': data}, namespace='/inspector')
+    # data = util.inspector.update(dataset)
+    # socketio.emit('update', {'data': data}, namespace='/inspector')
+
+    trig = datacube.converter.serializeTrig(rdf_dataset)
 
     with open('latest_update.trig', 'w') as f:
-        f.write(datacube.converter.serializeTrig(dataset))
+        f.write(trig)
 
-    query = sc.make_update(dataset)
-    result = sc.sparql_update(query)
+    for graph in rdf_dataset.contexts():
+        graph_uri = graph.identifier
+        sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
 
-    return jsonify({'code': 200, 'message': result})
+    return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
 
 
 @app.route('/browse', methods=['GET'])
@@ -908,7 +908,6 @@ def iri():
         raise(Exception("The IRI {} could not be converted to a compliant IRI".format(unsafe_iri)))
 
 
-
 def get_dimensions():
     # Get the LSD dimensions from the LSD service (or a locally cached copy)
     # And concatenate it with the dimensions in the CSDH
@@ -917,10 +916,11 @@ def get_dimensions():
     dimensions = get_lsd_dimensions() + get_csdh_dimensions()
 
     # dimensions_as_dict = {dim['uri']: dim for dim in dimensions}
-    sorted_dimensions = sorted(dimensions,key=lambda t: t['refs'])
+    sorted_dimensions = sorted(dimensions, key=lambda t: t['refs'])
 
     # sorted_dimensions = OrderedDict(sorted(dimensions_as_dict.items(), key=lambda t: t[1]['refs']))
     return sorted_dimensions
+
 
 def get_lsd_dimensions():
     """Loads the list of Linked Statistical Data dimensions (variables) from the LSD portal"""

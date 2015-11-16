@@ -13,15 +13,14 @@ FOAF = Namespace('http://xmlns.com/foaf/0.1/')
 
 
 def safe_url(NS, local):
-    """Generates a URIRef from the namespace + local part that is relatively safe for
+    """Generates a URIRef from the namespace + local part that is safe for
     use in RDF graphs
 
     Arguments:
     NS      -- a @Namespace object
     local   -- the local name of the resource
     """
-    safe_local = local.replace(' ', '_')
-    return NS[safe_local]
+    return URIRef(iribaker.to_iri(NS[local]))
 
 
 def get_base_uri(dataset):
@@ -42,7 +41,7 @@ def get_variable_uri(dataset, variable):
     return iribaker.to_iri(BASE[variable])
 
 
-def data_structure_definition(dataset, variables, profile, source_path, source_hash):
+def data_structure_definition(profile, dataset_name, dataset_base_uri, variables, source_path, source_hash):
     """Converts the dataset + variables to a set of rdflib Graphs (a nanopublication with provenance annotations)
     that contains the data structure definition (from the DataCube vocabulary) and
     the mappings to external datasets.
@@ -56,7 +55,8 @@ def data_structure_definition(dataset, variables, profile, source_path, source_h
 
     :returns: an RDF graph store containing a nanopublication
     """
-    BASE = Namespace('http://data.socialhistory.org/resource/{}/'.format(dataset))
+    BASE = Namespace('{}/'.format(dataset_base_uri))
+    dataset_uri = URIRef(dataset_base_uri)
 
     # Initialize a conjunctive graph for the whole lot
     rdf_dataset = Dataset()
@@ -72,7 +72,6 @@ def data_structure_definition(dataset, variables, profile, source_path, source_h
     timestamp = datetime.datetime.now().isoformat()
 
     hash_part = source_hash + '/' + timestamp
-
 
     # The Nanopublication consists of three graphs
     assertion_graph_uri = BASE['assertion/' + hash_part]
@@ -124,6 +123,7 @@ def data_structure_definition(dataset, variables, profile, source_path, source_h
 
     # Provenance information for the assertion graph (the data structure definition itself)
     provenance_graph.add((assertion_graph_uri, PROV['wasDerivedFrom'], dataset_version_uri))
+    provenance_graph.add((dataset_uri, PROV['wasDerivedFrom'], dataset_version_uri))
     provenance_graph.add((assertion_graph_uri, PROV['generatedAtTime'], Literal(timestamp, datatype=XSD.datetime)))
     provenance_graph.add((assertion_graph_uri, PROV['wasAttributedTo'], author_uri))
 
@@ -134,7 +134,7 @@ def data_structure_definition(dataset, variables, profile, source_path, source_h
     # The URI of the latest version of QBer
     # TODO: should point to the actual latest commit of this QBer source file.
     # TODO: consider linking to this as the plan of some activity, rather than an activity itself.
-    qber_uri = URIRef('https://github.com/CLARIAH-SDH/qber.git')
+    qber_uri = URIRef('https://github.com/CLARIAH/qber.git')
 
     pubinfo_graph.add((nanopublication_uri, PROV['wasGeneratedBy'], qber_uri))
     pubinfo_graph.add((nanopublication_uri, PROV['generatedAtTime'], Literal(timestamp, datatype=XSD.datetime)))
@@ -143,90 +143,83 @@ def data_structure_definition(dataset, variables, profile, source_path, source_h
     # ----
     # The assertion graph
     # ----
-    dataset_uri = QBR[dataset]
+
     structure_uri = BASE['structure']
 
     assertion_graph.add((dataset_uri, RDF.type, QB['DataSet']))
+    assertion_graph.add((dataset_uri, RDFS.label, Literal(dataset_name)))
     assertion_graph.add((structure_uri, RDF.type, QB['DataStructureDefinition']))
 
     assertion_graph.add((dataset_uri, QB['structure'], structure_uri))
 
+    for variable_id, variable in variables.items():
+        variable_uri = URIRef(variable['default'])
 
-    for variable_id, metadata in variables.items():
-        variable_uri = BASE[variable_id]
-        component_uri = safe_url(BASE, 'component/' + variable_id)
+        # The variable as component of the definition
+        component_uri = safe_url(BASE, 'component/' + variable['label'])
 
+        # Add link between the definition and the component
         assertion_graph.add((structure_uri, QB['component'], component_uri))
 
-        # DIMENSION PROPERTIES
-        assertion_graph.add((variable_uri, RDFS.label, Literal(variable_id)))
+        # Add label to variable
+        assertion_graph.add((variable_uri, RDFS.label, Literal(variable['label'])))
 
-        if 'description' in metadata and metadata['description'] != "":
-            assertion_graph.add((variable_uri, RDFS.comment, Literal(metadata['description'])))
+        if 'description' in variable and variable['description'] != "":
+            assertion_graph.add((variable_uri, RDFS.comment, Literal(variable['description'])))
 
-        if 'dimension_type' in metadata and metadata['dimension_type'] != "":
-            dimension_type_uri = URIRef(metadata['dimension_type'])
+        if 'dimension_type' in variable and variable['dimension_type'] != "":
+            variable_type = URIRef(variable['type'])
 
-            if dimension_type_uri == QB['DimensionProperty']:
-                assertion_graph.add((variable_uri, RDF.type, dimension_type_uri))
+            if variable_type == QB['DimensionProperty']:
+                assertion_graph.add((variable_uri, RDF.type, variable_type))
                 assertion_graph.add((component_uri, QB['dimension'], variable_uri))
-            elif dimension_type_uri == QB['MeasureProperty']:
-                assertion_graph.add((variable_uri, RDF.type, dimension_type_uri))
+
+                # Coded variables are also of type coded property (a subproperty of dimension property)
+                if variable['category'] == 'coded':
+                    assertion_graph.add((variable_uri, RDF.type, QB['CodedProperty']))
+
+            elif variable_type == QB['MeasureProperty']:
+                # The category 'other'
+                assertion_graph.add((variable_uri, RDF.type, variable_type))
                 assertion_graph.add((component_uri, QB['measure'], variable_uri))
-            elif dimension_type_uri == QB['AttributeProperty']:
-                assertion_graph.add((variable_uri, RDF.type, dimension_type_uri))
+            elif variable_type == QB['AttributeProperty']:
+                # Actually never produced by QBer at this stage
+                assertion_graph.add((variable_uri, RDF.type, variable_type))
                 assertion_graph.add((component_uri, QB['attribute'], variable_uri))
-        elif ('lod_variable_field' in metadata and metadata['lod_variable_field'] != "") or ('codelist_checkbox' in metadata and metadata['codelist_checkbox'] == True) or ('learn_codelist_checkbox' in metadata and metadata['learn_codelist_checkbox'] == True):
-            # It must be a dimension....
-            assertion_graph.add((variable_uri, RDF.type, QB['DimensionProperty']))
-            assertion_graph.add((component_uri, QB['dimension'], variable_uri))
-        else :
-            # Otherwise we assume it is just an attribute
-            assertion_graph.add((variable_uri, RDF.type, QB['AttributeProperty']))
-            assertion_graph.add((component_uri, QB['attribute'], variable_uri))
 
-        # If we have a variable from the LOD cloud
-        if 'lod_variable_field' in metadata and metadata['lod_variable_field'] != "":
-            assertion_graph.add((variable_uri, RDFS.subPropertyOf, URIRef(metadata['lod_variable_field'])))
+        # If this variable is of category 'coded', we add codelist and URIs for each variable (including mappings between value uris and etc....)
+        if variable['category'] == 'coded':
+            codelist_uri = URIRef(variable['codelist']['default'])
 
-        # If we have a codelist for this variable
-        if ('codelist_checkbox' in metadata and metadata['codelist_checkbox'] is True) or ('learn_codelist_checkbox' in metadata and metadata['learn_codelist_checkbox'] is True):
-            # The variable should have its own codelist (a collection, since we don't know the hierarchy)
-            codelist_uri = safe_url(BASE, 'codelist/' + variable_id)
             assertion_graph.add((codelist_uri, RDF.type, SKOS['Collection']))
-            assertion_graph.add((codelist_uri, RDFS.label, Literal('Code list for "{}" in dataset {}'.format(variable_id, dataset))))
-
-            # The variable should be typed as a 'coded property'
-            assertion_graph.add((variable_uri, RDF.type, QB['CodedProperty']))
+            assertion_graph.add((codelist_uri, RDFS.label, Literal(variable['codelist']['label'])))
 
             # And it should point to the codelist
             assertion_graph.add((variable_uri, QB['codeList'], codelist_uri))
 
-            # Generate a SKOS concept for each of the values
-            for value in metadata['values']:
-                # Skip if the value is not long enough
-                if value['id'].strip() == '':
-                    continue
+            # The variable is mapped onto an external code list.
+            if variable['codelist']['default'] != variable['codelist']['uri']:
+                assertion_graph.add((codelist_uri, PROV['wasDerivedFrom'], URIRef(variable['codelist']['uri'])))
 
-                value_id = value['id']
-                value_uri = safe_url(BASE,'code/' + variable_id + '/' + value_id)
+            # Generate a SKOS concept for each of the values and map it to the assigned codelist
+            for value in variable['values']:
+                value_uri = URIRef(value['default'])
 
                 assertion_graph.add((value_uri, RDF.type, SKOS['Concept']))
-                assertion_graph.add((value_uri, SKOS['prefLabel'], Literal(value_id)))
+                assertion_graph.add((value_uri, SKOS['prefLabel'], Literal(value['literal'])))
                 assertion_graph.add((codelist_uri, SKOS['member'], value_uri))
 
-            # If we have a mapping specified, map to the codelist we selected
-            if 'codelist_field' in metadata and metadata['codelist_field'] != "":
-                assertion_graph.add((codelist_uri, PROV['wasDerivedFrom'], URIRef(metadata['codelist_field'])))
-                print metadata['mappings']
-                for mapping in metadata['mappings'].values():
-                    source = mapping['id']
-                    target = mapping['value']
-
-                    assertion_graph.add((safe_url(BASE, 'code/' + variable_id + '/' + source), SKOS['exactMatch'], URIRef(target)))
-
-    for c in rdf_dataset.contexts():
-        print c
+                if value['default'] != value['uri']:
+                    assertion_graph.add((value_uri, SKOS['exactMatch'], URIRef(variable['uri'])))
+        elif variable['category'] == 'identifier':
+            # Generate a SKOS concept for each of the values
+            for value in variable['values']:
+                value_uri = URIRef(value['uri'])
+                assertion_graph.add((value_uri, RDF.type, SKOS['Concept']))
+                assertion_graph.add((value_uri, SKOS['prefLabel'], Literal(value['literal'])))
+        elif variable['category'] == 'other':
+            # Generate a literal for each of the values when converting the dataset (but not here)
+            pass
 
     return rdf_dataset
 

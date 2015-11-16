@@ -99,6 +99,7 @@ class Adapter(object):
             for i in counts.index:
                 stat = {}
                 stat['label'] = i
+                stat['literal'] = i
                 stat['default'] = iribaker.to_iri("{}/value/{}/{}".format(self.dataset_uri, col, i))
                 stat['uri'] = stat['default']
                 stat['count'] = counts[i]
@@ -110,12 +111,13 @@ class Adapter(object):
             codelist = {
                 'default': codelist_uri,
                 'uri': codelist_uri,
-                'label': "Codelist generated from the values for '{}'".format(i)
+                'label': "Codelist generated from the values for '{}'".format(col)
             }
             stats[col] = {
                 'default': variable_uri,
                 'uri': variable_uri,
                 'label': col,
+                'literal': col,
                 'description': "The variable '{}' as taken from the '{}' dataset.".format(col, self.dataset_name),
                 'category': 'coded',
                 'type': 'http://purl.org/linked-data/cube#DimensionProperty', # This is the default
