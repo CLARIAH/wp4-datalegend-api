@@ -97,30 +97,55 @@ class Adapter(object):
             counts = self.data[col].value_counts()
 
             for i in counts.index:
-                stat = {}
-                stat['label'] = i
-                stat['literal'] = i
-                stat['default'] = iribaker.to_iri("{}/value/{}/{}".format(self.dataset_uri, col, i))
-                stat['uri'] = stat['default']
-                stat['count'] = counts[i]
+                # The URI for the variable value
+                i_uri = iribaker.to_iri("{}/value/{}/{}"
+                                        .format(self.dataset_uri, col, i))
+
+
+                # Capture the counts and label in a dictionary for the value
+                stat = {
+                    'original': {
+                        'uri': i_uri,
+                        'label': i
+                    },
+                    'label': i,
+                    'uri': i_uri,
+                    'count': counts[i]
+                }
+
+                # And append it to the list of variable values
                 istats.append(stat)
 
-            variable_uri = iribaker.to_iri("{}/variable/{}".format(self.dataset_uri, col))
-            codelist_uri = iribaker.to_iri("{}/codelist/{}".format(self.dataset_uri, col))
+            # The URI for the variable
+            variable_uri = iribaker.to_iri("{}/variable/{}"
+                                           .format(self.dataset_uri, col))
+            # The URI for a (potential) codelist for the variable
+            codelist_uri = iribaker.to_iri("{}/codelist/{}"
+                                           .format(self.dataset_uri, col))
+
+            codelist_label = "Codelist generated from the values for '{}'".format(col)
 
             codelist = {
-                'default': codelist_uri,
+                'original': {
+                    'uri': codelist_uri,
+                    'label': codelist_label
+                },
                 'uri': codelist_uri,
-                'label': "Codelist generated from the values for '{}'".format(col)
+                'label': codelist_label
             }
+
             stats[col] = {
-                'default': variable_uri,
+                'original': {
+                    'uri': variable_uri,
+                    'label': col
+                },
                 'uri': variable_uri,
                 'label': col,
-                'literal': col,
-                'description': "The variable '{}' as taken from the '{}' dataset.".format(col, self.dataset_name),
+                'description': "The variable '{}' as taken "
+                               "from the '{}' dataset."
+                               .format(col, self.dataset_name),
                 'category': 'coded',
-                'type': 'http://purl.org/linked-data/cube#DimensionProperty', # This is the default
+                'type': 'http://purl.org/linked-data/cube#DimensionProperty',  # This is the default
                 'values': istats,
                 'codelist': codelist
             }
