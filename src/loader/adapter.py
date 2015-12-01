@@ -96,6 +96,8 @@ class Adapter(object):
 
             counts = self.data[col].value_counts()
 
+            # print self.data[col][0]
+
             for i in counts.index:
                 # The URI for the variable value
                 i_uri = iribaker.to_iri("{}/value/{}/{}"
