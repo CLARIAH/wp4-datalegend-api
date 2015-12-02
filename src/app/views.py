@@ -4,6 +4,7 @@ from flask.ext.socketio import emit
 from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
 
+
 import traceback
 import logging
 import requests
@@ -20,6 +21,7 @@ import config
 import util.sparql_client as sc
 import util.file_client as fc
 import util.git_client as git_client
+import util.dataverse_client as dc
 
 from app import app, socketio
 
@@ -154,15 +156,21 @@ def error_response(ex):
 def get_dataset_definition():
     """
     Get dataset metadata
-    Loads the metadata for a dataset specified by the 'file' relative path argument
+    Loads the metadata for a dataset specified by the 'file' relative path argument, or the 'handle' parameter.
+    One of these must be provided
     ---
       parameters:
         - name: file
           in: query
           description: The path to the dataset file that is to be loaded
-          required: true
+          required: false
           type: string
           defaultValue: derived/utrecht_1829_clean_01.csv
+        - name: handle
+          in: query
+          description: A handle to a dataset in the preconfigured Dataverse (e.g. a DOI or a Handle)
+          type: string
+          defaultValue: doi:10.7910/DVN/28993
       tags:
         - Dataset
       responses:
@@ -244,10 +252,16 @@ def get_dataset_definition():
             $ref: "#/definitions/Message"
     """
     dataset_file = request.args.get('file', False)
+    dataset_handle = request.args.get('handle', False)
 
     # Check whether a file has been provided
-    if not dataset_file:
-        raise(Exception('You should provide me with a relative path to the file you want to load'))
+    if not (dataset_file or dataset_handle):
+        raise(Exception('You should provide a handle or a relative path to the file you want to load'))
+    elif dataset_handle:
+        dataverse_connection = dc.Connection()
+
+        dv_dataset = dataverse_connection.dataset(dataset_handle)
+        dataset_file = dataverse_connection.retrieve_files(dv_dataset, config.base_path)
 
 
     # Create an absolute path
@@ -262,11 +276,12 @@ def get_dataset_definition():
     else:
         log.info("Building new dataset dictionary")
 
+
+
         # Specify the dataset's details
         # TODO: this is hardcoded, and needs to be gleaned from the dataset file metadata
         dataset = {
             'filename': dataset_path,
-            'format': 'CSV',
             'header': True
         }
 
