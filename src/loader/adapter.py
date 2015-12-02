@@ -10,6 +10,7 @@ from collections import OrderedDict, defaultdict
 import csv
 import pandas as pd
 import iribaker
+import magic
 import os
 from app import config
 
@@ -187,7 +188,7 @@ class CsvAdapter(Adapter):
         """Initializes an adapter for reading a CSV dataset"""
         super(CsvAdapter, self).__init__(dataset)
 
-        if not dataset['format'] == 'CSV':
+        if not dataset['format'] == 'text/csv':
             raise Exception('This is a CSV adapter, not {}'.format(dataset['format']))
 
         self.filename = dataset['filename']
@@ -209,6 +210,33 @@ class CsvAdapter(Adapter):
         print self.validate_header()
         return
 
+class TabAdapter(Adapter):
+
+    def __init__(self, dataset):
+        """Initializes an adapter for reading a Tab-delimited dataset"""
+        super(TabAdapter, self).__init__(dataset)
+
+        if not dataset['format'] == 'text/tab-separated-values':
+            raise Exception('This is a CSV adapter, not {}'.format(dataset['format']))
+
+        self.filename = dataset['filename']
+
+        self.has_header = dataset['header']
+
+        with open(self.filename, 'r') as fn:
+            self.data = pd.DataFrame.from_csv(fn, sep='\t')
+        if self.has_header:
+            self.header = list(self.data.columns)
+        elif self.metadata:
+            self.header = self.metadata.keys()
+        else:
+            self.header = None
+
+        self.metadata = self.load_metadata()
+
+        print self.validate_header()
+        return
+
 
 
 
@@ -216,12 +244,45 @@ class CsvAdapter(Adapter):
 
 mappings = {
     # "SPSS": SavAdapter,
-    "CSV": CsvAdapter
+    "text/csv": CsvAdapter,
+    "text/tab-separated-values": TabAdapter
 }
 
 def get_adapter(dataset):
 
-    adapterClass = mappings[dataset['format']]
-    adapter = adapterClass(dataset)
+    if 'format' in dataset:
+        mimetype = dataset['format']
+    else:
+        csv_fileh = open(dataset['filename'], 'rb')
+        try:
+            dialect = csv.Sniffer().sniff(csv_fileh.read(1024))
+            # Perform various checks on the dialect (e.g., lineseparator,
+            # delimiter) to make sure it's sane
 
-    return adapter
+            # Don't forget to reset the read position back to the start of
+            # the file before reading any entries.
+            csv_fileh.seek(0)
+
+            if dialect.delimiter == ',' or dialect.delimiter == ';':
+                mimetype = 'text/csv'
+            elif dialect.delimiter == '\t':
+                mimetype = 'text/tab-separated-values'
+            else:
+                # Probably not very wise, but we'll default to the CSV mimetype and rely on Panda's ability to guess the separator
+                mimetype = 'text/csv'
+
+        except csv.Error:
+            # File appears not to be in CSV format; try libmagic (not very useful)
+            mimetype = magic.from_buffer(open(dataset['filename']).read(1024), mime=True)
+
+        # Make sure we set the guessed mimetype as format for the dataset
+        dataset['format'] = mimetype
+
+    try:
+        adapterClass = mappings[mimetype]
+        adapter = adapterClass(dataset)
+
+        return adapter
+    except Exception as e:
+        raise(e)
+        # raise(Exception("No adapter for this file type: '{}'".format(mimetype)))
