@@ -19,6 +19,10 @@ CRUD_URL = '<CRUD URL>'
 from requests.auth import HTTPDigestAuth
 CRUD_AUTH = HTTPDigestAuth('<USER>', '<PASS>')
 
+# Dataverse configuration
+DATAVERSE_HOST = '<DATAVERSE_HOST>' # e.g. dataverse.harvard.edu (without the http:// bit)
+DATAVERSE_TOKEN = '<API TOKEN>' # The API token key for connecting to dataverse
+
 # Is the API running behind a proxy?
 BEHIND_PROXY = False
 
