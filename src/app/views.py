@@ -160,17 +160,24 @@ def get_dataset_definition():
     One of these must be provided
     ---
       parameters:
-        - name: file
+        - name: name
           in: query
           description: The path to the dataset file that is to be loaded
           required: false
           type: string
           defaultValue: derived/utrecht_1829_clean_01.csv
-        - name: handle
+        - name: id
           in: query
-          description: A handle to a dataset in the preconfigured Dataverse (e.g. a DOI or a Handle)
+          description: The id of a dataverse dataset file that is to be loaded
+          required: false
           type: string
-          defaultValue: doi:10.7910/DVN/28993
+          defaultValue: 2531997
+        - name: type
+          in: query
+          description: Either 'dataverse' or 'file'.
+          required: false
+          type: string
+          defaultValue: file
       tags:
         - Dataset
       responses:
@@ -253,21 +260,22 @@ def get_dataset_definition():
           schema:
             $ref: "#/definitions/Message"
     """
-    dataset_file = request.args.get('file', False)
-    dataset_handle = request.args.get('handle', False)
+    dataset_id = request.args.get('id', False)
+    dataset_type = request.args.get('type', False)
+    dataset_name = request.args.get('name', False)
+    # dataset_dataverse_id = request.args.get('dataverse_id', False)
 
     # Check whether a file has been provided
-    if not (dataset_file or dataset_handle):
-        raise(Exception('You should provide a handle or a relative path to the file you want to load'))
-    elif dataset_handle:
+    if not ((dataset_id and dataset_type) or dataset_name):
+        raise(Exception('You should provide a file id or a relative path to the file you want to load, and specify its type'))
+
+    if dataset_type == 'dataverse':
         dataverse_connection = dc.Connection()
+        dataset_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
+    else :
+        # Create an absolute path
+        dataset_path = os.path.join(config.base_path, dataset_name)
 
-        dv_dataset = dataverse_connection.dataset(dataset_handle)
-        dataset_file = dataverse_connection.retrieve_files(dv_dataset, config.base_path)
-
-
-    # Create an absolute path
-    dataset_path = os.path.join(config.base_path, dataset_file)
     log.debug('Dataset path: ' + dataset_path)
 
     cached_dataset = read_cache(dataset_path)
@@ -297,7 +305,7 @@ def get_dataset_definition():
         dataset_definition_response = {
             'name': adapter.get_dataset_name(),
             'uri': adapter.get_dataset_uri(),
-            'file': dataset_file,
+            'file': dataset_name,
             'variables': adapter.get_values(),
         }
 
@@ -867,6 +875,80 @@ def browse():
     filelist, parent = fc.browse(config.base_path, path)
 
     return jsonify({'path': path, 'parent': parent, 'files': filelist})
+
+
+
+@app.route('/dataverse/dataset', methods=['GET'])
+def dataverse_study():
+    """
+    Retrieve the files for a study
+    Takes a Handle or DOI, goes out to dataverse, and retrieves the files for the study dataset.
+    ---
+      tags:
+        - Dataverse
+      parameters:
+        - name: handle
+          in: query
+          description: A handle to a dataset in the preconfigured Dataverse (e.g. a DOI or a Handle)
+          type: string
+          defaultValue: doi:10.7910/DVN/28993
+      responses:
+        '200':
+          description: Path retrieved
+          schema:
+            description: A dataverse dataset (study)
+            type: object
+            properties:
+                study:
+                    description: The current study dataset
+                    type: string
+                files:
+                    description: The list of TAB or CSV files found in this study
+                    type: array
+                    items:
+                        description: A file, its path, name and its mimetype
+                        schema:
+                            id: FileInfo
+                            type: object
+                            properties:
+                                label:
+                                    description: The name of the file
+                                    type: string
+                                mimetype:
+                                    description: The mimetype of the file
+                                    type: string
+                                type:
+                                    description: The type (always 'dataverse')
+                                    type: string
+                                uri:
+                                    description: The identifier of the file on dataverse
+                                    type: string
+                            required:
+                                - label
+                                - mimetype
+                                - type
+                                - uri
+            required:
+                - path
+                - parent
+                - files
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
+    study_handle = request.args.get('handle', None)
+
+    if not study_handle:
+        raise Exception('Must specify a handle!')
+
+    dataverse_connection = dc.Connection()
+
+    dataverse_dataset = dataverse_connection.dataset(study_handle)
+    dataset_files = dataverse_connection.retrieve_files(dataverse_dataset)
+
+    log.debug(dataset_files)
+    return jsonify({'study': study_handle, 'files': dataset_files})
 
 
 @app.route('/iri', methods=['GET'])

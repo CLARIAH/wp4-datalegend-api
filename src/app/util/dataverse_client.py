@@ -43,41 +43,48 @@ class Connection(object):
         Calls the search API with the permanent identifier provided, and uses the returned entity_id
         to call the native API for dataset details.
         """
-        entity_id = self.search('identifier:{}'.format(identifier))['data']['items'][0]['entity_id']
 
-        params = copy(self.params)
+        try:
+            entity_id = self.search('identifier:{}'.format(identifier))['data']['items'][0]['entity_id']
 
-        url = self.dataset_url.format(entity_id)
+            params = copy(self.params)
 
-        r = requests.get(url,params)
-        return r.json()['data']['latestVersion']
+            url = self.dataset_url.format(entity_id)
+
+            r = requests.get(url,params)
+            return r.json()['data']['latestVersion']
+        except:
+            raise(Exception('No results found for {}'.format(identifier)))
 
 
-    def access(self, identifier):
+    def access(self, name, identifier, destination):
         params = copy(self.params)
 
         url = self.access_url.format(identifier)
         r = requests.get(url,params)
 
-        return r
+        if r.status_code == requests.codes.ok:
+            filename = os.path.join(destination, name)
+            print "Downloading to {}".format(filename)
+            with open(filename,'w') as datafile:
+                datafile.write(r.content)
+        else:
+            raise(Exception('Cannot download file {}'.format(f['datafile']['name'])))
+
+        return filename
 
 
-    def retrieve_files(self, dataset_metadata, destination):
-        tabcsvfile = ""
+    def retrieve_files(self, dataset_metadata):
+        files = []
         for f in dataset_metadata['files']:
-            print f['datafile']['id']
+            print f['datafile']
             if f['datafile']['contentType'] in ['text/tab-separated-values', 'text/csv']:
                 print "This is a tab or csv file"
-                r = self.access(f['datafile']['id'])
 
-                if r.status_code == requests.codes.ok:
-                    filename = os.path.join(destination, f['datafile']['name'])
-                    tabcsvfile = f['datafile']['name']
-                    print "Downloading to {}".format(filename)
-                    with open(filename,'w') as datafile:
-                        datafile.write(r.content)
-                else:
-                    raise(Exception('Cannot download file {}'.format(f['datafile']['name'])))
+                files.append(
+                    {'label': f['datafile']['name'], 'uri': str(f['datafile']['id']), 'mimetype': f['datafile']['contentType'], 'type': 'dataverse'}
+                )
 
-        # Temporarily return the last retrieved suitable file.
-        return tabcsvfile
+
+        # And return the list of files...
+        return files

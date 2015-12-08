@@ -243,8 +243,8 @@ class TabAdapter(Adapter):
         """Initializes an adapter for reading a Tab-delimited dataset"""
         super(TabAdapter, self).__init__(dataset)
 
-        if not dataset['format'] == 'text/tab-separated-values':
-            raise Exception('This is a CSV adapter, not {}'.format(dataset['format']))
+        if dataset['format'] not in ['text/tab-separated-values', 'text/plain']:
+            raise Exception('This is a Tab adapter, not {}'.format(dataset['format']))
 
         self.filename = dataset['filename']
 
@@ -272,7 +272,8 @@ class TabAdapter(Adapter):
 mappings = {
     # "SPSS": SavAdapter,
     "text/csv": CsvAdapter,
-    "text/tab-separated-values": TabAdapter
+    "text/tab-separated-values": TabAdapter,
+    "text/plain": TabAdapter
 }
 
 def get_adapter(dataset):
