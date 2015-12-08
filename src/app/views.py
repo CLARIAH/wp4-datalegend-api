@@ -162,13 +162,13 @@ def get_dataset_definition():
       parameters:
         - name: name
           in: query
-          description: The path to the dataset file that is to be loaded
+          description: The name of the dataset file that is to be loaded
           required: false
           type: string
           defaultValue: derived/utrecht_1829_clean_01.csv
         - name: id
           in: query
-          description: The id of a dataverse dataset file that is to be loaded
+          description: The id of a dataverse dataset file that is to be loaded, or a relative path to a file on disk
           required: false
           type: string
           defaultValue: 2531997
@@ -274,7 +274,7 @@ def get_dataset_definition():
         dataset_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
     else :
         # Create an absolute path
-        dataset_path = os.path.join(config.base_path, dataset_name)
+        dataset_path = os.path.join(config.base_path, dataset_id)
 
     log.debug('Dataset path: ' + dataset_path)
 
