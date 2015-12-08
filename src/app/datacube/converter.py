@@ -153,70 +153,96 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     assertion_graph.add((dataset_uri, QB['structure'], structure_uri))
 
     for variable_id, variable in variables.items():
-        variable_uri = URIRef(variable['default'])
+        variable_uri = URIRef(variable['original']['uri'])
+        variable_label = Literal(variable['original']['label'])
+        variable_type = URIRef(variable['type'])
+
+        codelist_uri = URIRef(variable['codelist']['original']['uri'])
+        codelist_label = Literal(variable['codelist']['original']['label'])
 
         # The variable as component of the definition
-        component_uri = safe_url(BASE, 'component/' + variable['label'])
+        component_uri = safe_url(BASE, 'component/' + variable['original']['label'])
 
         # Add link between the definition and the component
         assertion_graph.add((structure_uri, QB['component'], component_uri))
 
         # Add label to variable
-        assertion_graph.add((variable_uri, RDFS.label, Literal(variable['label'])))
+        # TODO: We may need to do something with a changed label for the variable
+        assertion_graph.add((variable_uri, RDFS.label, variable_label))
 
         if 'description' in variable and variable['description'] != "":
             assertion_graph.add((variable_uri, RDFS.comment, Literal(variable['description'])))
 
-        if 'dimension_type' in variable and variable['dimension_type'] != "":
-            variable_type = URIRef(variable['type'])
+        # If the variable URI is not the same as the original,
+        # it is a specialization of a prior variable property.
+        if variable['uri'] != str(variable_uri):
+            assertion_graph.add((variable_uri,
+                                 RDFS['subPropertyOf'],
+                                 URIRef(variable['uri'])))
 
-            if variable_type == QB['DimensionProperty']:
-                assertion_graph.add((variable_uri, RDF.type, variable_type))
-                assertion_graph.add((component_uri, QB['dimension'], variable_uri))
+        if variable_type == QB['DimensionProperty']:
+            assertion_graph.add((variable_uri, RDF.type, variable_type))
+            assertion_graph.add((component_uri, QB['dimension'], variable_uri))
 
-                # Coded variables are also of type coded property (a subproperty of dimension property)
-                if variable['category'] == 'coded':
-                    assertion_graph.add((variable_uri, RDF.type, QB['CodedProperty']))
+            # Coded variables are also of type coded property (a subproperty of dimension property)
+            if variable['category'] == 'coded':
+                assertion_graph.add((variable_uri, RDF.type, QB['CodedProperty']))
 
-            elif variable_type == QB['MeasureProperty']:
-                # The category 'other'
-                assertion_graph.add((variable_uri, RDF.type, variable_type))
-                assertion_graph.add((component_uri, QB['measure'], variable_uri))
-            elif variable_type == QB['AttributeProperty']:
-                # Actually never produced by QBer at this stage
-                assertion_graph.add((variable_uri, RDF.type, variable_type))
-                assertion_graph.add((component_uri, QB['attribute'], variable_uri))
+        elif variable_type == QB['MeasureProperty']:
+            # The category 'other'
+            assertion_graph.add((variable_uri, RDF.type, variable_type))
+            assertion_graph.add((component_uri, QB['measure'], variable_uri))
+        elif variable_type == QB['AttributeProperty']:
+            # Actually never produced by QBer at this stage
+            assertion_graph.add((variable_uri, RDF.type, variable_type))
+            assertion_graph.add((component_uri, QB['attribute'], variable_uri))
 
-        # If this variable is of category 'coded', we add codelist and URIs for each variable (including mappings between value uris and etc....)
+        # If this variable is of category 'coded', we add codelist and URIs for
+        # each variable (including mappings between value uris and etc....)
         if variable['category'] == 'coded':
-            codelist_uri = URIRef(variable['codelist']['default'])
-
             assertion_graph.add((codelist_uri, RDF.type, SKOS['Collection']))
-            assertion_graph.add((codelist_uri, RDFS.label, Literal(variable['codelist']['label'])))
+            assertion_graph.add((codelist_uri, RDFS.label, Literal(codelist_label)))
 
-            # And it should point to the codelist
+            # The variable should point to the codelist
             assertion_graph.add((variable_uri, QB['codeList'], codelist_uri))
 
             # The variable is mapped onto an external code list.
-            if variable['codelist']['default'] != variable['codelist']['uri']:
-                assertion_graph.add((codelist_uri, PROV['wasDerivedFrom'], URIRef(variable['codelist']['uri'])))
+            # If the codelist uri is not the same as the original one, we
+            # have a derived codelist.
+            if variable['codelist']['uri'] != str(codelist_uri):
+                assertion_graph.add((codelist_uri,
+                                     PROV['wasDerivedFrom'],
+                                     URIRef(variable['codelist']['uri'])))
 
-            # Generate a SKOS concept for each of the values and map it to the assigned codelist
+            # Generate a SKOS concept for each of the values and map it to the
+            # assigned codelist
             for value in variable['values']:
-                value_uri = URIRef(value['default'])
+                value_uri = URIRef(value['original']['uri'])
+                value_label = Literal(value['original']['label'])
 
                 assertion_graph.add((value_uri, RDF.type, SKOS['Concept']))
-                assertion_graph.add((value_uri, SKOS['prefLabel'], Literal(value['literal'])))
+                assertion_graph.add((value_uri, SKOS['prefLabel'], Literal(value_label)))
                 assertion_graph.add((codelist_uri, SKOS['member'], value_uri))
 
-                if value['default'] != value['uri']:
-                    assertion_graph.add((value_uri, SKOS['exactMatch'], URIRef(variable['uri'])))
+                # The value has been changed, and therefore there is a mapping
+                if value['original']['uri'] != value['uri']:
+                    assertion_graph.add((value_uri, SKOS['exactMatch'], URIRef(value['uri'])))
+                    assertion_graph.add((value_uri, RDFS.label, Literal(value['label'])))
+
         elif variable['category'] == 'identifier':
             # Generate a SKOS concept for each of the values
             for value in variable['values']:
-                value_uri = URIRef(value['uri'])
+                value_uri = URIRef(value['original']['uri'])
+                value_label = Literal(value['original']['label'])
+
                 assertion_graph.add((value_uri, RDF.type, SKOS['Concept']))
-                assertion_graph.add((value_uri, SKOS['prefLabel'], Literal(value['literal'])))
+                assertion_graph.add((value_uri, SKOS['prefLabel'], value_label))
+
+                # The value has been changed, and therefore there is a mapping
+                if value['original']['uri'] != value['uri']:
+                    assertion_graph.add((value_uri, SKOS['exactMatch'], URIRef(value['uri'])))
+                    assertion_graph.add((value_uri, RDFS.label, Literal(value['label'])))
+
         elif variable['category'] == 'other':
             # Generate a literal for each of the values when converting the dataset (but not here)
             pass
@@ -224,8 +250,7 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     return rdf_dataset
 
 
-# Because Trig serialization in RDFLib is extremely crappy
-import string
+
 
 
 def reindent(s, numSpaces):
@@ -234,7 +259,8 @@ def reindent(s, numSpaces):
     s = "\n".join(s)
     return s
 
-
+# Because Trig serialization in RDFLib is extremely crappy
+import string
 def serializeTrig(rdf_dataset):
     turtles = []
     for c in rdf_dataset.contexts():
