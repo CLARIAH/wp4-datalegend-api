@@ -23,7 +23,6 @@ Then install the required Python packages using [pip](https://pip.readthedocs.or
 `pip install -r requirements.txt`
 
 Copy the `config_template.py` file to `config.py` and make necessary changes (see documentation in the file).
-These settings are needed for posting the QBer generated RDF descriptions of your dataset to a triple store (we use Stardog).
 
 Change directory to `src` and then:
 
@@ -33,4 +32,4 @@ the API will be running on <http://localhost:5000> (click this link, or copy it 
 
 Go to <http://localhost:5000/specs> to view the API specs in JSON schema format (Swagger)
 
-Make sure to always activate the virtualenv before running the API again.
+Make sure to always activate the `virtualenv` before running the API again.
