@@ -2,7 +2,8 @@
 # Copy this file to 'config.py' and make necessary changes for your local setup.
 import os
 
-base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "<RELATIVE PATH TO DATA FOLDER>"))
+base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                         "<RELATIVE PATH TO DATA FOLDER>"))
 
 # Base URI for resources
 QBR_BASE = "http://data.socialhistory.org/resource/"
@@ -20,8 +21,8 @@ from requests.auth import HTTPDigestAuth
 CRUD_AUTH = HTTPDigestAuth('<USER>', '<PASS>')
 
 # Dataverse configuration
-DATAVERSE_HOST = '<DATAVERSE_HOST>' # e.g. dataverse.harvard.edu (without the http:// bit)
-DATAVERSE_TOKEN = '<API TOKEN>' # The API token key for connecting to dataverse
+DATAVERSE_HOST = '<DATAVERSE_HOST>'  # e.g. dataverse.harvard.edu (without the http:// bit)
+DATAVERSE_TOKEN = '<API TOKEN>'  # The API token key for connecting to dataverse
 
 # Is the API running behind a proxy?
 BEHIND_PROXY = False
@@ -32,7 +33,7 @@ DEBUG = True
 # Stardog specific stuff
 # (these are the default settings for HTTP Basic authenticating)
 REASONING_TYPE = 'NONE'
-AUTH = ('admin','admin')
+AUTH = ('admin', 'admin')
 
 # Respond to GitHub webhooks
 FOLLOW_GITHUB = True

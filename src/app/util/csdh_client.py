@@ -106,6 +106,7 @@ def get_definition(uri):
     else:
         raise(Exception("Could not find the definition for <{}> online, nor in the CSDH".format(uri)))
 
+
 def get_dimensions():
     # Get the LSD dimensions from the LSD service (or a locally cached copy)
     # And concatenate it with the dimensions in the CSDH

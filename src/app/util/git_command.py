@@ -3,7 +3,6 @@ import os
 import argparse
 
 
-
 def get_repository(data_path):
     git = sh.git.bake(_cwd=data_path)
     try:
@@ -13,11 +12,13 @@ def get_repository(data_path):
 
     return git
 
+
 def pull(data_path):
     git = get_repository(data_path)
     response = git.pull()
 
     return response
+
 
 def add_file(data_path, absolute_path, author, email):
     git = get_repository(data_path)
@@ -27,7 +28,8 @@ def add_file(data_path, absolute_path, author, email):
 
     try:
         git.add(path)
-        git.commit('--author=\"{} <{}>\"'.format(author, email), m="QBer commit by {} (<{}>)".format(author, email))
+        git.commit('--author=\"{} <{}>\"'.format(author, email),
+                   m="QBer commit by {} (<{}>)".format(author, email))
     except:
         pass
 

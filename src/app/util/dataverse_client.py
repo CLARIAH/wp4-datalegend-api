@@ -3,6 +3,7 @@ from copy import copy
 import app.config as config
 import os
 
+
 class Connection(object):
 
     def __init__(self, host=config.DATAVERSE_HOST, token=config.DATAVERSE_TOKEN):
@@ -18,7 +19,6 @@ class Connection(object):
         self.dataset_url = "http://{}/api/datasets/{{}}".format(host)
         self.access_url = "http://{}/api/access/datafile/{{}}".format(host)
 
-
     def search(self, query, dv_type=None):
         """
         Calls the search API of the Dataverse installation with the provided query string
@@ -31,12 +31,11 @@ class Connection(object):
             params['type'] = dv_type
         params['show_entity_ids'] = True
 
-        params_str = "&".join("%s=%s" % (k,v) for k,v in params.items())
+        params_str = "&".join("%s=%s" % (k, v) for k, v in params.items())
         url = self.search_url + "?" + params_str
         r = requests.get(url)
 
         return r.json()
-
 
     def dataset(self, identifier):
         """
@@ -51,28 +50,26 @@ class Connection(object):
 
             url = self.dataset_url.format(entity_id)
 
-            r = requests.get(url,params)
+            r = requests.get(url, params)
             return r.json()['data']['latestVersion']
         except:
             raise(Exception('No results found for {}'.format(identifier)))
-
 
     def access(self, name, identifier, destination):
         params = copy(self.params)
 
         url = self.access_url.format(identifier)
-        r = requests.get(url,params)
+        r = requests.get(url, params)
 
         if r.status_code == requests.codes.ok:
             filename = os.path.join(destination, name)
             print "Downloading to {}".format(filename)
-            with open(filename,'w') as datafile:
+            with open(filename, 'w') as datafile:
                 datafile.write(r.content)
         else:
-            raise(Exception('Cannot download file {}'.format(f['datafile']['name'])))
+            raise(Exception('Cannot download file {}'.format(name)))
 
         return filename
-
 
     def retrieve_files(self, dataset_metadata):
         files = []
@@ -82,9 +79,11 @@ class Connection(object):
                 print "This is a tab or csv file"
 
                 files.append(
-                    {'label': f['datafile']['name'], 'uri': str(f['datafile']['id']), 'mimetype': f['datafile']['contentType'], 'type': 'dataverse'}
+                    {'label': f['datafile']['name'],
+                     'uri': str(f['datafile']['id']),
+                     'mimetype': f['datafile']['contentType'],
+                     'type': 'dataverse'}
                 )
-
 
         # And return the list of files...
         return files

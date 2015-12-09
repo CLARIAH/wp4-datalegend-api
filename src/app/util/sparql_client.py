@@ -2,13 +2,13 @@ import app.config as config
 from rdflib import Graph, URIRef, Dataset
 import requests
 import json
+import traceback
 
 
 # This is old style, but leaving for backwards compatibility with earlier versions of Stardog
-QUERY_HEADERS = {
-                 'Accept': 'application/sparql-results+json',
+QUERY_HEADERS = {'Accept': 'application/sparql-results+json',
                  'SD-Connection-String': 'reasoning={}'.format(config.REASONING_TYPE)
-                }
+                 }
 
 UPDATE_HEADERS = {
     'Content-Type': 'application/sparql-update',
@@ -16,7 +16,8 @@ UPDATE_HEADERS = {
     'Accept': 'application/json'
 }
 
-def resolve(uri, depth=2, current_depth=0, visited = set()):
+
+def resolve(uri, depth=2, current_depth=0, visited=set()):
     """ Resolves the URI to the maximum depth specified by 'depth' """
     # print current_depth, uri
     if current_depth == depth:
@@ -44,8 +45,7 @@ def resolve(uri, depth=2, current_depth=0, visited = set()):
             try:
                 print "Trying to parse", uri, "as turtle"
                 g.parse(uri, format='turtle')
-            except Exception as e:
-                import traceback
+            except:
                 traceback.print_exc()
                 visited.add(uri)
                 return False, visited
@@ -58,15 +58,15 @@ def resolve(uri, depth=2, current_depth=0, visited = set()):
         visited.add(uri)
         # We'll visit every triple in the file we downloaded
         # Alternatively only use those where the 'uri' is a subject (but that makes caching harder)
-        for s,p,o in g.triples((None, None, None)) :
+        for s, p, o in g.triples((None, None, None)):
             # Resolve every object 'o' (as long as it is a URI)
-            if isinstance(o, URIRef) :
-                success, visited = resolve(o, depth=depth, current_depth  = current_depth + 1, visited = visited)
+            if isinstance(o, URIRef):
+                success, visited = resolve(o, depth=depth, current_depth=current_depth + 1, visited=visited)
 
     return True, visited
 
 
-def make_update(graph, graph_uri = None):
+def make_update(graph, graph_uri=None):
     if isinstance(graph, Dataset):
         nts = []
         for c in graph.contexts():
@@ -81,7 +81,7 @@ def make_update(graph, graph_uri = None):
             nts.append(nt)
         query = "INSERT DATA {{ {} }}".format("\n".join(nts))
     elif isinstance(graph, Graph):
-        if graph_uri == None :
+        if graph_uri is None:
             template = "INSERT DATA {{ {} }}"
             query = template.format(graph.serialize(format='nt'))
         else:
@@ -91,14 +91,16 @@ def make_update(graph, graph_uri = None):
     return query
 
 
-def ask_graph(uri, endpoint_url = config.ENDPOINT_URL):
-    return ask(uri, template = "ASK {{ GRAPH <{}> {{ ?s ?p ?o }} }}", endpoint_url=endpoint_url)
+def ask_graph(uri, endpoint_url=config.ENDPOINT_URL):
+    return ask(uri, template="ASK {{ GRAPH <{}> {{ ?s ?p ?o }} }}", endpoint_url=endpoint_url)
 
 
-def ask(uri, template = "ASK {{ <{}> ?p ?o }}", endpoint_url = config.ENDPOINT_URL):
+def ask(uri, template="ASK {{ <{}> ?p ?o }}", endpoint_url=config.ENDPOINT_URL):
     query = template.format(uri)
 
-    result = requests.get(endpoint_url, params={'query': query, 'reasoning': config.REASONING_TYPE}, headers={'Accept': 'application/json'})
+    result = requests.get(endpoint_url,
+                          params={'query': query, 'reasoning': config.REASONING_TYPE},
+                          headers={'Accept': 'application/json'})
 
     json_result = json.loads(result.content)
 
@@ -115,16 +117,18 @@ def post_data(data, graph_uri=None, endpoint_url=config.CRUD_URL):
         params = {'graph-uri': graph_uri}
     else:
         params = {}
-    result = requests.post(endpoint_url, data=data, params=params, headers={'Content-Type': 'application/turtle'}, auth=config.CRUD_AUTH)
+    result = requests.post(endpoint_url, data=data, params=params,
+                           headers={'Content-Type': 'application/turtle'}, auth=config.CRUD_AUTH)
 
     print "SPARQL CRUD status: ", result.status_code
     print "SPARQL CRUD response:\n ", result.content
 
     return result.content
 
-def sparql_update(query, endpoint_url = config.UPDATE_URL):
 
-    # result = requests.post(endpoint_url,params={'reasoning': config.REASONING_TYPE}, data=query, headers=UPDATE_HEADERS)
+def sparql_update(query, endpoint_url=config.UPDATE_URL):
+    # result = requests.post(endpoint_url,params={'reasoning': config.REASONING_TYPE},
+    # data=query, headers=UPDATE_HEADERS)
     result = requests.post(endpoint_url, data=query, headers=UPDATE_HEADERS)
 
     print "SPARQL UPDATE status: ", result.status_code
@@ -132,11 +136,15 @@ def sparql_update(query, endpoint_url = config.UPDATE_URL):
 
     return result.content
 
-def sparql(query, endpoint_url = config.ENDPOINT_URL):
-    """This method replaces the SPARQLWrapper SPARQL interface, since SPARQLWrapper cannot handle the Stardog-style query headers needed for inferencing"""
 
-    try :
-        result = requests.get(endpoint_url, params={'query': query, 'reasoning': config.REASONING_TYPE}, headers=QUERY_HEADERS)
+def sparql(query, endpoint_url=config.ENDPOINT_URL):
+    """This method replaces the SPARQLWrapper SPARQL interface, since SPARQLWrapper
+       cannot handle the Stardog-style query headers needed for inferencing"""
+
+    try:
+        result = requests.get(endpoint_url,
+                              params={'query': query, 'reasoning': config.REASONING_TYPE},
+                              headers=QUERY_HEADERS)
         result_dict = json.loads(result.content)
     except Exception as e:
         print e
@@ -152,12 +160,12 @@ def dictize(sparql_results):
 
     results = []
 
-    for r in sparql_results :
+    for r in sparql_results:
         result = {}
-        for k,v in r.items():
-            try :
+        for k, v in r.items():
+            try:
                 result[k] = v['value']
-            except :
+            except:
                 print k, v
 
         results.append(result)

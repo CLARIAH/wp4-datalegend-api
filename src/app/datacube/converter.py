@@ -83,8 +83,6 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     pubinfo_graph_uri = BASE['pubinfo/' + hash_part]
     pubinfo_graph = rdf_dataset.graph(pubinfo_graph_uri)
 
-
-
     # A URI that represents the author
     author_uri = QBR['person/' + profile['email']]
 
@@ -93,9 +91,6 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     rdf_dataset.add((author_uri, FOAF['email'], Literal(profile['email'])))
     rdf_dataset.add((author_uri, QBRV['googleId'], Literal(profile['id'])))
     rdf_dataset.add((author_uri, FOAF['depiction'], URIRef(profile['image'])))
-
-
-
 
     # A URI that represents the version of the dataset source file
     dataset_version_uri = BASE[source_hash]
@@ -124,7 +119,8 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     # Provenance information for the assertion graph (the data structure definition itself)
     provenance_graph.add((assertion_graph_uri, PROV['wasDerivedFrom'], dataset_version_uri))
     provenance_graph.add((dataset_uri, PROV['wasDerivedFrom'], dataset_version_uri))
-    provenance_graph.add((assertion_graph_uri, PROV['generatedAtTime'], Literal(timestamp, datatype=XSD.datetime)))
+    provenance_graph.add((assertion_graph_uri, PROV['generatedAtTime'],
+                          Literal(timestamp, datatype=XSD.datetime)))
     provenance_graph.add((assertion_graph_uri, PROV['wasAttributedTo'], author_uri))
 
     # ----
@@ -137,7 +133,8 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     qber_uri = URIRef('https://github.com/CLARIAH/qber.git')
 
     pubinfo_graph.add((nanopublication_uri, PROV['wasGeneratedBy'], qber_uri))
-    pubinfo_graph.add((nanopublication_uri, PROV['generatedAtTime'], Literal(timestamp, datatype=XSD.datetime)))
+    pubinfo_graph.add((nanopublication_uri, PROV['generatedAtTime'],
+                      Literal(timestamp, datatype=XSD.datetime)))
     pubinfo_graph.add((nanopublication_uri, PROV['wasAttributedTo'], author_uri))
 
     # ----
@@ -250,9 +247,6 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     return rdf_dataset
 
 
-
-
-
 def reindent(s, numSpaces):
     s = s.split('\n')
     s = [(numSpaces * ' ') + string.lstrip(line) for line in s]
@@ -261,6 +255,8 @@ def reindent(s, numSpaces):
 
 # Because Trig serialization in RDFLib is extremely crappy
 import string
+
+
 def serializeTrig(rdf_dataset):
     turtles = []
     for c in rdf_dataset.contexts():
@@ -268,7 +264,7 @@ def serializeTrig(rdf_dataset):
             turtle = "<{id}> {{\n".format(id=c.identifier)
             turtle += reindent(c.serialize(format='turtle'), 4)
             turtle += "}\n\n"
-        else :
+        else:
             turtle = c.serialize(format='turtle')
             turtle += "\n\n"
 

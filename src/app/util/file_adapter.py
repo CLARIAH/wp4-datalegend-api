@@ -4,7 +4,7 @@
 # import os
 # os.environ["DYLD_LIBRARY_PATH"] = "../lib/python2.7/site-packages/savReaderWriter/spssio/macos"
 
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 # TODO: Temporarily Disabled
 # from savReaderWriter import SavReader, SavHeaderReader
 import csv
@@ -54,20 +54,19 @@ class Adapter(object):
             metadata_filename = self.dataset['metadata']
 
             with open(metadata_filename, "r") as metadata_file:
-                metadata_reader = csv.reader(metadata_file,delimiter=";",quotechar="\"")
+                metadata_reader = csv.reader(metadata_file, delimiter=";", quotechar="\"")
 
                 for l in metadata_reader:
                     metadata[l[0].strip()] = l[1].strip()
 
-        elif self.header :
+        elif self.header:
             print "No metadata... reconstructing from header"
             for h in self.header:
                 metadata[h] = h
-        else :
+        else:
             print "No metadata or header"
 
         return metadata
-
 
     def validate_header(self):
         """Checks whether the header in the file and the metadata provided are exactly the same"""
@@ -78,10 +77,10 @@ class Adapter(object):
                 print "Header and metadata do *not* correspond"
                 # print zip(self.header,self.metadata.keys())
                 return False
-            else :
+            else:
                 print "Header and metadata are aligned"
                 return True
-        else :
+        else:
             print "No header or no metadata present"
             return False
 
@@ -103,7 +102,6 @@ class Adapter(object):
                 # The URI for the variable value
                 i_uri = iribaker.to_iri("{}/value/{}/{}"
                                         .format(self.dataset_uri, col, i))
-
 
                 # Capture the counts and label in a dictionary for the value
                 stat = {
@@ -156,7 +154,6 @@ class Adapter(object):
         return stats
 
 
-
 # TODO: Temporarily Disabled
 # class SavAdapter(Adapter):
 #
@@ -190,11 +187,13 @@ class Adapter(object):
 #         # Get first 10000 rows
 #         rows = self.reader.head(10000)
 #
-#         # Assume metadata keys are best (since if no metadata exists, the header will be used to generate it)
+#         # Assume metadata keys are best (since if no metadata exists, the header
+#         # will be used to generate it)
 #         header = self.metadata.keys()
 #
 #         # Convert the rows to a list of dictionaries with keys from the header
-#         data_dictionaries = [dict(zip(header, [v.strip() if type(v) == str else v for v in values ])) for values in rows]
+#         data_dictionaries = [dict(zip(header, [v.strip() if type(v) == str
+#                              else v for v in values ])) for values in rows]
 #
 #         # Convert the list of dictionaries to a dictionary of sets
 #         data = defaultdict(set)
@@ -237,6 +236,7 @@ class CsvAdapter(Adapter):
         print self.validate_header()
         return
 
+
 class TabAdapter(Adapter):
 
     def __init__(self, dataset):
@@ -265,16 +265,13 @@ class TabAdapter(Adapter):
         return
 
 
-
-
-
-
 mappings = {
     # "SPSS": SavAdapter,
     "text/csv": CsvAdapter,
     "text/tab-separated-values": TabAdapter,
     "text/plain": TabAdapter
 }
+
 
 def get_adapter(dataset):
 
@@ -296,7 +293,8 @@ def get_adapter(dataset):
             elif dialect.delimiter == '\t':
                 mimetype = 'text/tab-separated-values'
             else:
-                # Probably not very wise, but we'll default to the CSV mimetype and rely on Panda's ability to guess the separator
+                # Probably not very wise, but we'll default to the CSV mimetype
+                # and rely on Panda's ability to guess the separator
                 mimetype = 'text/csv'
 
         except csv.Error:
