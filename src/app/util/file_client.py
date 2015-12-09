@@ -4,7 +4,7 @@ import os
 import json
 
 from glob import glob
-from magic import from_file
+import magic
 
 import file_adapter as fa
 
@@ -81,7 +81,8 @@ def browse(parent_path, relative_path):
     for p in files:
         (pth, fn) = os.path.split(p)
 
-        mimetype = from_file(p, mime=True)
+        mymagic = magic.Magic(mimetype=True)
+        mimetype = mymagic.from_file(p)
 
         if mimetype == "text/plain" and (fn[-3:] == "ttl" or fn[-2:] == 'n3'):
             mimetype = "text/turtle"
