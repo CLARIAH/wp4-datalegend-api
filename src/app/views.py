@@ -157,31 +157,15 @@ def error_response(ex):
 def get_dataset_definition():
     """
     Get dataset metadata
-    Loads the metadata for a dataset specified by the 'file' relative path argument,
-    or the 'handle' parameter.
-    One of these must be provided
+    Loads the metadata for a dataset specified by the 'path' relative path argument.
     ---
       parameters:
-        - name: name
+        - name: path
           in: query
-          description: The name of the dataset file that is to be loaded
+          description: The relative path of the dataset file that is to be loaded
           required: false
           type: string
           defaultValue: derived/utrecht_1829_clean_01.csv
-        - name: id
-          in: query
-          description:
-            The id of a dataverse dataset file that is to be loaded,
-            or a relative path to a file on disk
-          required: false
-          type: string
-          defaultValue: 2531997
-        - name: type
-          in: query
-          description: Either 'dataverse' or 'file'.
-          required: false
-          type: string
-          defaultValue: file
       tags:
         - Dataset
       responses:
@@ -264,25 +248,19 @@ def get_dataset_definition():
           schema:
             $ref: "#/definitions/Message"
     """
-    dataset_id = request.args.get('id', False)
-    dataset_type = request.args.get('type', False)
-    dataset_name = request.args.get('name', False)
-    # dataset_dataverse_id = request.args.get('dataverse_id', False)
+    dataset_path = request.args.get('path', False)
 
-    # Check whether a file has been provided
-    if not ((dataset_id and dataset_type) or dataset_name):
-        raise(Exception("""You should provide a file id or a relative path to
-                        the file you want to load, and specify its type"""))
+    # Check whether a file path has been provided
+    if not dataset_path:
+        raise(Exception("""You should provide a relative path to
+                        the file you want to load, and specify its name"""))
 
-    if dataset_type == 'dataverse':
-        dataverse_connection = dc.Connection()
-        dataset_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
-    else:
-        # Create an absolute path
-        dataset_path = os.path.join(config.base_path, dataset_id)
+    dataset_name = os.path.basename(dataset_path)
+    # Create an absolute path
+    absolute_dataset_path = os.path.join(config.base_path, dataset_name)
 
-    log.debug('Dataset path: ' + dataset_path)
-    dataset_definition = fc.load(dataset_name, dataset_path)
+    log.debug('Dataset path: ' + absolute_dataset_path)
+    dataset_definition = fc.load(dataset_name, absolute_dataset_path)
 
     return jsonify(dataset_definition)
 
@@ -697,7 +675,7 @@ def browse():
 
 
 @app.route('/dataverse/dataset', methods=['GET'])
-def dataverse_study():
+def dataverse_dataset():
     """
     Retrieve the files for a study
     Takes a Handle or DOI, goes out to dataverse, and retrieves the files for the study dataset.
@@ -767,6 +745,53 @@ def dataverse_study():
 
     log.debug(dataset_files)
     return jsonify({'study': study_handle, 'files': dataset_files})
+
+
+@app.route('/dataverse/definition')
+def dataverse_definition():
+    """
+    Get dataset metadata from a dataverse file
+    Loads the metadata for a dataverse file specified by the id and name parameters.
+    Response is the same as for `/dataset/definition`
+    ---
+      parameters:
+        - name: name
+          in: query
+          description: The name of the dataset file that is to be loaded
+          required: false
+          type: string
+          defaultValue: "Mortality.monthly_MadrasIndia.1916_1921.tab"
+        - name: id
+          in: query
+          description:
+            The id of a dataverse dataset file that is to be loaded
+          required: false
+          type: string
+          defaultValue: 2531997
+      tags:
+        - Dataverse
+      responses:
+        '200':
+          description: Dataset metadata retrieved
+          schema:
+            $ref: "#/definitions/DatasetSchema"
+        default:
+          description: Unexpected error
+          schema:
+            $ref: "#/definitions/Message"
+    """
+    dataset_id = request.args.get('id', False)
+    dataset_name = request.args.get('name', False)
+
+    # Check whether a file has been provided
+    if not (dataset_id and dataset_name):
+        raise(Exception("""You should provide a file id and name"""))
+
+    dataverse_connection = dc.Connection()
+    dataset_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
+    dataset_definition = fc.load(dataset_name, dataset_path)
+
+    return jsonify(dataset_definition)
 
 
 @app.route('/iri', methods=['GET'])

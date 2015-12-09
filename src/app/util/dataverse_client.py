@@ -43,6 +43,14 @@ class Connection(object):
         to call the native API for dataset details.
         """
 
+        # Check whether the identifier has the expected format
+        identifier = identifier.replace('http://dx.doi.org/', 'doi:')
+        identifier = identifier.replace('http://hdl.handle.net/', 'hdl:')
+
+        # Default to doi: prefix is no prefix is provided
+        if not (identifier.startswith('doi:') or identifier.startswith('hdl:')):
+            identifier = 'doi:{}'.format(identifier)
+
         try:
             entity_id = self.search('identifier:{}'.format(identifier))['data']['items'][0]['entity_id']
 
