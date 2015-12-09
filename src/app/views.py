@@ -144,6 +144,7 @@ def error_response(ex):
         code = ex.errno
     else:
         code = 42
+
     response = jsonify(message=str(ex), code=code)
     response.status_code = (code
                             if isinstance(ex, HTTPException)
@@ -570,6 +571,7 @@ def dataset_submit():
     source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
     log.debug("Using {} as dataset hash".format(source_hash))
 
+    log.debug("Starting conversion ...")
     rdf_dataset = datacube.converter.data_structure_definition(
         user,
         dataset['name'],
@@ -577,18 +579,21 @@ def dataset_submit():
         dataset['variables'],
         dataset['file'],
         source_hash)
-
+    log.debug("... done")
     # data = util.inspector.update(dataset)
     # socketio.emit('update', {'data': data}, namespace='/inspector')
 
+    log.debug("Starting serializer ...")
     trig = datacube.converter.serializeTrig(rdf_dataset)
-
     with open('latest_update.trig', 'w') as f:
         f.write(trig)
+    log.debug("... done")
 
     for graph in rdf_dataset.contexts():
         graph_uri = graph.identifier
+        log.debug("Posting {} ...".format(graph_uri))
         sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
+        log.debug("... done")
 
     return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
 
