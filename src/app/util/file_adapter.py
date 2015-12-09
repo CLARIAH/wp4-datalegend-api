@@ -299,7 +299,8 @@ def get_adapter(dataset):
 
         except csv.Error:
             # File appears not to be in CSV format; try libmagic (not very useful)
-            mimetype = magic.from_buffer(open(dataset['filename']).read(1024), mime=True)
+            mymagic = magic.Magic(mime=True)
+            mimetype = mymagic.from_buffer(open(dataset['filename']).read(1024), mime=True)
 
         # Make sure we set the guessed mimetype as format for the dataset
         dataset['format'] = mimetype
