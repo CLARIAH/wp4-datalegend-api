@@ -1,7 +1,7 @@
 import sh
 import os
 import argparse
-
+import traceback
 
 def get_repository(data_path):
     git = sh.git.bake(_cwd=data_path)
@@ -20,21 +20,25 @@ def pull(data_path):
     return response
 
 
-def add_file(data_path, absolute_path, author, email):
+def add_file(data_path, path, author, email):
     git = get_repository(data_path)
 
-    # Get the relative path
-    path = os.path.relpath(absolute_path, data_path)
+    path = path.replace(' ', '\\ ')
 
+    # Get the relative path
+    absolute_path = os.path.join(data_path, path)
     try:
-        git.add(path)
+        git.add(absolute_path)
         git.commit('--author=\"{} <{}>\"'.format(author, email),
                    m="QBer commit by {} (<{}>)".format(author, email))
     except:
         pass
 
-    sha_hash = git('ls-files', '-s', absolute_path).split(' ')[1]
+    git_output = git('ls-files', '-s', absolute_path)
+
+    sha_hash = git_output.split(' ')[1]
     return sha_hash
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Get Git hash and commit if possible')
