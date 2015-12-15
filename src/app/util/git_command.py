@@ -3,6 +3,7 @@ import os
 import argparse
 import traceback
 
+
 def get_repository(data_path):
     git = sh.git.bake(_cwd=data_path)
     try:
@@ -24,7 +25,6 @@ def add_file(data_path, path, author, email):
     git = get_repository(data_path)
 
     path = path.replace(' ', '\\ ')
-
     # Get the relative path
     absolute_path = os.path.join(data_path, path)
     try:
