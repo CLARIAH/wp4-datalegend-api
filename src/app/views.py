@@ -260,8 +260,8 @@ def get_dataset_definition():
     # Create an absolute path
     absolute_dataset_path = os.path.join(config.base_path, dataset_path)
 
-    log.debug('Dataset path: ' + absolute_dataset_path)
-    dataset_definition = fc.load(dataset_name, absolute_dataset_path)
+    log.debug('Dataset path: ' + dataset_path)
+    dataset_definition = fc.load(dataset_name, dataset_path, absolute_dataset_path)
 
     return jsonify(dataset_definition)
 
@@ -793,8 +793,10 @@ def dataverse_definition():
         raise(Exception("""You should provide a file id and name"""))
 
     dataverse_connection = dc.Connection()
-    dataset_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
-    dataset_definition = fc.load(dataset_name, dataset_path)
+    dataset_absolute_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
+
+    dataset_relative_path = os.path.relpath(dataset_absolute_path, config.base_path)
+    dataset_definition = fc.load(dataset_name, dataset_relative_path, dataset_absolute_path)
 
     return jsonify(dataset_definition)
 

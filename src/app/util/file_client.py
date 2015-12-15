@@ -35,9 +35,9 @@ def write_cache(dataset_path, dataset_definition):
     log.debug("Written dataset definition to cache")
 
 
-def load(dataset_name, dataset_path):
+def load(dataset_name, relative_dataset_path, absolute_dataset_path):
     # First try to load from cache
-    cached_dataset = read_cache(dataset_path)
+    cached_dataset = read_cache(absolute_dataset_path)
     if cached_dataset != {}:
         log.info("Returning from cache")
         return cached_dataset
@@ -48,7 +48,7 @@ def load(dataset_name, dataset_path):
     # Specify the dataset's details
     # TODO: this is hardcoded, and needs to be gleaned from the dataset file metadata
     dataset = {
-        'filename': dataset_path,
+        'filename': absolute_dataset_path,
         'header': True
     }
 
@@ -61,12 +61,12 @@ def load(dataset_name, dataset_path):
     dataset_definition = {
         'name': adapter.get_dataset_name(),
         'uri': adapter.get_dataset_uri(),
-        'file': dataset_name,
+        'file': relative_dataset_path,
         'variables': adapter.get_values(),
     }
 
     # We write what we've read to cache
-    write_cache(dataset_path, dataset_definition)
+    write_cache(absolute_dataset_path, dataset_definition)
 
     return dataset_definition
 
@@ -81,7 +81,10 @@ def browse(parent_path, relative_path):
     for p in files:
         (pth, fn) = os.path.split(p)
 
-        mymagic = magic.Magic(mimetype=True)
+        try:
+            mymagic = magic.Magic(mimetype=True)
+        except:
+            mymagic = magic.Magic()
         mimetype = mymagic.from_file(p)
 
         if mimetype == "text/plain" and (fn[-3:] == "ttl" or fn[-2:] == 'n3'):
