@@ -280,6 +280,14 @@ def get_adapter(dataset):
 
     if 'format' in dataset:
         mimetype = dataset['format']
+    elif dataset['filename'].endswith('.tsv') or dataset['filename'].endswith('.tab'):
+        mimetype = 'text/tab-separated-values'
+        # Make sure we set the guessed mimetype as format for the dataset
+        dataset['format'] = mimetype
+    elif dataset['filename'].endswith('.csv'):
+        mimetype = 'text/csv'
+        # Make sure we set the guessed mimetype as format for the dataset
+        dataset['format'] = mimetype
     else:
         csv_fileh = open(dataset['filename'], 'rb')
         try:
@@ -292,12 +300,15 @@ def get_adapter(dataset):
             csv_fileh.seek(0)
 
             if dialect.delimiter == ',' or dialect.delimiter == ';':
+                print "Detected CSV"
                 mimetype = 'text/csv'
             elif dialect.delimiter == '\t':
+                print "Detected TAB"
                 mimetype = 'text/tab-separated-values'
             else:
                 # Probably not very wise, but we'll default to the CSV mimetype
                 # and rely on Panda's ability to guess the separator
+                print "Fallback to CSV"
                 mimetype = 'text/csv'
 
         except csv.Error:
