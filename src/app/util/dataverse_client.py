@@ -44,8 +44,8 @@ class Connection(object):
         """
 
         # Check whether the identifier has the expected format
-        identifier = identifier.replace('http://dx.doi.org/', 'doi:')
-        identifier = identifier.replace('http://hdl.handle.net/', 'hdl:')
+        identifier = identifier.strip().replace('http://dx.doi.org/', 'doi:')
+        identifier = identifier.strip().replace('http://hdl.handle.net/', 'hdl:')
 
         # Default to doi: prefix is no prefix is provided
         if not (identifier.startswith('doi:') or identifier.startswith('hdl:')):
