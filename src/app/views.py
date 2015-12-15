@@ -258,7 +258,7 @@ def get_dataset_definition():
 
     dataset_name = os.path.basename(dataset_path)
     # Create an absolute path
-    absolute_dataset_path = os.path.join(config.base_path, dataset_name)
+    absolute_dataset_path = os.path.join(config.base_path, dataset_path)
 
     log.debug('Dataset path: ' + absolute_dataset_path)
     dataset_definition = fc.load(dataset_name, absolute_dataset_path)

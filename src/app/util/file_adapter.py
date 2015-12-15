@@ -28,6 +28,9 @@ class Adapter(object):
         print "Initialized adapter"
         return
 
+    def get_data(self):
+        return self.data
+
     def get_reader(self):
         return self.reader
 
