@@ -69,7 +69,10 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     rdf_dataset.bind('foaf', FOAF)
 
     # Initialize the graphs needed for the nanopublication
-    timestamp = datetime.datetime.now().isoformat()
+    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M")
+
+    # Shorten the source hash to 8 digits (similar to Github)
+    source_hash = source_hash[:8]
 
     hash_part = source_hash + '/' + timestamp
 
