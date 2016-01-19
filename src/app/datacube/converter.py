@@ -93,8 +93,11 @@ def data_structure_definition(profile, dataset_name, dataset_base_uri, variables
     rdf_dataset.add((author_uri, FOAF['name'], Literal(profile['name'])))
     rdf_dataset.add((author_uri, FOAF['email'], Literal(profile['email'])))
     rdf_dataset.add((author_uri, QBRV['googleId'], Literal(profile['id'])))
-    rdf_dataset.add((author_uri, FOAF['depiction'], URIRef(profile['image'])))
-
+    try:
+        rdf_dataset.add((author_uri, FOAF['depiction'], URIRef(profile['image'])))
+    except KeyError: 
+        pass 
+    
     # A URI that represents the version of the dataset source file
     dataset_version_uri = BASE[source_hash]
 
