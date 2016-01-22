@@ -533,8 +533,9 @@ def dataset_save():
 @app.route('/dataset/delete', methods=['GET'])
 def dataset_delete():
     """
-    Remove a dataset from the CSDH (note that this requires the Nanopublication URI, not the dataset URI)
-    **WARNING**: There is no authentication/authorization in place
+    Remove a dataset from the CSDH
+    Note that this requires one to specify the Nanopublication URI, not the dataset URI
+    **WARNING**: There is no authentication/authorization in place. Not tested!
     ---
     tags:
         - Dataset
