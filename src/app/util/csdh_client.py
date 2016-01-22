@@ -369,3 +369,48 @@ def get_concepts(uri):
         sdh_codelist = []
 
     return lod_codelist + sdh_codelist
+
+
+def get_datasets():
+    query = """
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX np: <http://www.nanopub.org/nschema#>
+        PREFIX qb: <http://purl.org/linked-data/cube#>
+        PREFIX prov: <http://www.w3.org/ns/prov#>
+
+        SELECT DISTINCT ?uri ?label ?owner ?nanopublication WHERE {
+          ?nanopublication a         np:Nanopublication ;
+               np:hasAssertion       ?assertion_uri ;
+               np:hasPublicationInfo ?pubinfo_uri .
+
+          GRAPH ?assertion_uri {
+            ?uri         a                    qb:DataSet ;
+                         rdfs:label           ?label .
+          }
+          GRAPH ?pubinfo_uri {
+            ?nanopublication         prov:wasAttributedTo ?owner .
+          }
+        }
+    """
+
+    dataset_list = []
+
+
+    try:
+        log.debug("Querying the SDH")
+        # Then we have a look locally
+        sdh_datasets_results = sc.sparql(query)
+        if len(sdh_datasets_results) > 0:
+            dataset_list = sc.dictize(sdh_datasets_results)
+        else:
+            dataset_list = []
+
+        log.debug(dataset_list)
+
+    except Exception as e:
+        log.error(e)
+        log.error('Could not retrieve anything from the SDH')
+        dataset_list = []
+
+    return dataset_list

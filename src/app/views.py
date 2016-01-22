@@ -531,6 +531,56 @@ def dataset_save():
     return jsonify({'code': 200, 'message': 'Success'})
 
 
+@app.route('/dataset/list', methods=['GET'])
+def dataset_list():
+    """
+    List the datasets currently available on the CSDH
+    ---
+    tags:
+        - Dataset
+    responses:
+        '200':
+            description: Dataset list retrieved
+            schema:
+              description: A list of datasets (the IRI of the nanopublication, the owner and the name)
+              type: object
+              properties:
+                  datasets:
+                      description: The list of datasets
+                      type: array
+                      items:
+                        description: A dataset's name, IRI and owner
+                        schema:
+                          id: Dataset
+                          type: object
+                          properties:
+                            label:
+                              description: The name of the datasets
+                              type: string
+                            uri:
+                              description: The IRI of the datasets
+                              type: string
+                            nanopublication:
+                              description: The IRI of the Nanopublication
+                              type: string
+                            owner:
+                              description: The IRI of the owner of the dataset
+                              type: string
+                          required:
+                            - label
+                            - uri
+                            - owner
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
+
+    dataset_list = cc.get_datasets()
+
+    return jsonify({'datasets': dataset_list})
+
+
 @app.route('/dataset/submit', methods=['POST'])
 def dataset_submit():
     """
