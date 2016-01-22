@@ -396,7 +396,6 @@ def get_datasets():
 
     dataset_list = []
 
-
     try:
         log.debug("Querying the SDH")
         # Then we have a look locally
@@ -414,3 +413,74 @@ def get_datasets():
         dataset_list = []
 
     return dataset_list
+
+
+def delete_dataset(uri):
+    log.warning("TODO: To be implemented")
+    query = """
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX np: <http://www.nanopub.org/nschema#>
+        PREFIX qb: <http://purl.org/linked-data/cube#>
+        PREFIX prov: <http://www.w3.org/ns/prov#>
+
+        SELECT DISTINCT ?assertion_uri ?pubinfo_uri ?provenance_uri WHERE {{
+          <{URI}> a         np:Nanopublication ;
+               np:hasAssertion       ?assertion_uri ;
+               np:hasPublicationInfo ?pubinfo_uri ;
+               np:hasProvenance      ?provenance_uri .
+        }}
+    """.format(URI=uri)
+
+    clear_query = """
+        CLEAR <{}>
+    """
+
+    delete_query = """
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX np: <http://www.nanopub.org/nschema#>
+        PREFIX qb: <http://purl.org/linked-data/cube#>
+        PREFIX prov: <http://www.w3.org/ns/prov#>
+
+        DELETE {{
+          <{URI}> a         np:Nanopublication ;
+               np:hasAssertion       ?assertion_uri ;
+               np:hasPublicationInfo ?pubinfo_uri ;
+               np:hasProvenance      ?provenance_uri .
+        }}
+        WHERE {{
+          <{URI}> a         np:Nanopublication ;
+               np:hasAssertion       ?assertion_uri ;
+               np:hasPublicationInfo ?pubinfo_uri ;
+               np:hasProvenance      ?provenance_uri .
+        }}
+    """.format(URI=uri)
+
+    nanopub = {}
+
+    try:
+        log.debug("Querying the SDH")
+        # Then we have a look locally
+        nanopub_results = sc.sparql(query)
+        if len(nanopub_results) > 0:
+            nanopub = sc.dictize(nanopub_results)[0]
+
+            sc.sparql_update(delete_query)
+
+            clear_assertion = clear_query.format(nanopub['assertion_uri'])
+            sc.sparql_update(clear_assertion)
+            clear_provenance = clear_query.format(nanopub['provenance_uri'])
+            sc.sparql_update(clear_provenance)
+            clear_pubinfo = clear_query.format(nanopub['pubinfo_uri'])
+            sc.sparql_update(clear_pubinfo)
+        else:
+            return "No matching nanopublication found"
+
+        log.debug(nanopub)
+    except Exception as e:
+        log.error(e)
+        log.error("Could not retrieve anything from the SDH")
+        return "Could not retrieve anything from the SDH"
+
+    return "Not implemented"

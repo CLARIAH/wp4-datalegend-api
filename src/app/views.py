@@ -530,6 +530,39 @@ def dataset_save():
     fc.write_cache(dataset_path, dataset)
     return jsonify({'code': 200, 'message': 'Success'})
 
+@app.route('/dataset/delete', methods=['GET'])
+def dataset_delete():
+    """
+    Remove a dataset from the CSDH (note that this requires the Nanopublication URI, not the dataset URI)
+    **WARNING**: There is no authentication/authorization in place
+    ---
+    tags:
+        - Dataset
+    parameters:
+        - name: uri
+          in: query
+          description: The nanpublication URI of the dataset that is to be removed
+          required: true
+          type: string
+    responses:
+        '200':
+            description: The dataset was succesfully removed from the SDH
+            schema:
+                $ref: "#/definitions/Message"
+        default:
+            description: Unexpected error
+            schema:
+              $ref: "#/definitions/Message"
+    """
+    uri = request.args.get('uri', None)
+
+    if not uri:
+        raise Exception('Must specify a Nanopublication URI!')
+
+    message = cc.delete_dataset(uri)
+
+    return jsonify({'code': 200, 'message': message})
+
 
 @app.route('/dataset/list', methods=['GET'])
 def dataset_list():
