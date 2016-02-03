@@ -148,7 +148,7 @@ class Adapter(object):
                 'description': "The variable '{}' as taken "
                                "from the '{}' dataset."
                                .format(col, self.dataset_name),
-                'category': 'coded',
+                'category': 'identifier',
                 'type': 'http://purl.org/linked-data/cube#DimensionProperty',  # This is the default
                 'values': istats,
                 'codelist': codelist
