@@ -9,9 +9,11 @@ from collections import OrderedDict
 # from savReaderWriter import SavReader, SavHeaderReader
 import csv
 import pandas as pd
+import numpy as np
 import iribaker
 import magic
 import os
+import traceback
 from app import config
 
 
@@ -103,7 +105,7 @@ class Adapter(object):
 
             for i in counts.index:
                 # The URI for the variable value
-                i_uri = iribaker.to_iri("{}/value/{}/{}"
+                i_uri = iribaker.to_iri(u"{}/value/{}/{}"
                                         .format(self.dataset_uri, col, i))
 
                 # Capture the counts and label in a dictionary for the value
@@ -240,6 +242,57 @@ class CsvAdapter(Adapter):
         return
 
 
+class ExcelAdapter(Adapter):
+
+    def __init__(self, dataset, clio=True):
+        """Initializes an adapter for reading an Excel dataset"""
+        super(ExcelAdapter, self).__init__(dataset)
+
+        if not (dataset['format'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or dataset['format'] == 'application/vnd.ms-excel'):
+            raise Exception('This is an Excel adapter, not {}'.format(dataset['format']))
+
+        self.filename = dataset['filename']
+
+        self.has_header = dataset['header']
+
+        with open(self.filename, 'r') as fn:
+            # If this is ClioInfra data, we skip the first two rows of the Worksheet
+            if clio:
+                skiprows = [0, 1]
+                header = 0
+            else:
+                skiprows = None
+                header = 0
+
+            self.data = pd.read_excel(fn, skiprows=skiprows, header=header)
+
+            if clio:
+                # Unpivot the table, excluding the first 6 columns (webmapper ids, country, period)
+                id_vars = [
+                    'Webmapper code',
+                    'Webmapper numeric code',
+                    'ccode',
+                    'country name',
+                    'start year',
+                    'end year'
+                ]
+                self.data = pd.melt(self.data, id_vars=id_vars, var_name='year', value_name='GDPPC')
+
+                self.data = self.data[np.isfinite(self.data['GDPPC'])]
+
+        if self.has_header:
+            self.header = list(self.data.columns)
+        elif self.metadata:
+            self.header = self.metadata.keys()
+        else:
+            self.header = None
+
+        self.metadata = self.load_metadata()
+
+        print self.validate_header()
+        return
+
+
 class TabAdapter(Adapter):
 
     def __init__(self, dataset):
@@ -272,7 +325,9 @@ mappings = {
     # "SPSS": SavAdapter,
     "text/csv": CsvAdapter,
     "text/tab-separated-values": TabAdapter,
-    "text/plain": TabAdapter
+    "text/plain": TabAdapter,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ExcelAdapter,
+    "application/vnd.ms-excel": ExcelAdapter
 }
 
 
@@ -325,5 +380,6 @@ def get_adapter(dataset):
 
         return adapter
     except Exception as e:
+        traceback.print_exc()
         raise(e)
         # raise(Exception("No adapter for this file type: '{}'".format(mimetype)))
