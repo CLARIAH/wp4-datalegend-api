@@ -80,26 +80,28 @@ def browse(parent_path, relative_path):
     filelist = []
     for p in files:
         (pth, fn) = os.path.split(p)
+        
+        if fn[-3:] == 'csv': 
 
-        try:
-            mymagic = magic.Magic(mimetype=True)
-        except:
-            mymagic = magic.Magic()
-        mimetype = mymagic.from_file(p)
-
-        if mimetype == "text/plain" and (fn[-3:] == "ttl" or fn[-2:] == 'n3'):
-            mimetype = "text/turtle"
-        if mimetype == "text/plain" and (fn[-3:] == "owl" or fn[-2:] == 'rdf'):
-            mimetype = "application/rdf+xml"
-
-        if os.path.isdir(p):
-            filetype = 'dir'
-        else:
-            filetype = 'file'
-
-        relative_p = os.path.relpath(p, parent_path)
-
-        filelist.append({'label': fn, 'uri': relative_p, 'mimetype': mimetype, 'type': filetype})
+            try:
+                mymagic = magic.Magic(mimetype=True)
+            except:
+                mymagic = magic.Magic()
+            mimetype = mymagic.from_file(p)
+    
+            if mimetype == "text/plain" and (fn[-3:] == "ttl" or fn[-2:] == 'n3'):
+                mimetype = "text/turtle"
+            if mimetype == "text/plain" and (fn[-3:] == "owl" or fn[-3:] == 'rdf'):
+                mimetype = "application/rdf+xml"
+    
+            if os.path.isdir(p):
+                filetype = 'dir'
+            else:
+                filetype = 'file'
+    
+            relative_p = os.path.relpath(p, parent_path)
+    
+            filelist.append({'label': fn, 'uri': relative_p, 'mimetype': mimetype, 'type': filetype})
 
     # Absolute parent is the absolute path of the parent of the current absolute path
     absolute_parent = os.path.abspath(os.path.join(absolute_path, os.pardir))
