@@ -58,12 +58,12 @@ def load(dataset_name, relative_dataset_path, absolute_dataset_path):
 
     log.debug("Preparing dataset definition")
     # Prepare the data dictionary
-    dataset_definition = {
+    dataset_definition = {'dataset': {
         'name': adapter.get_dataset_name(),
         'uri': adapter.get_dataset_uri(),
         'file': relative_dataset_path,
         'variables': adapter.get_values(),
-    }
+    }}
 
     # We write what we've read to cache
     write_cache(absolute_dataset_path, dataset_definition)
@@ -80,27 +80,27 @@ def browse(parent_path, relative_path):
     filelist = []
     for p in files:
         (pth, fn) = os.path.split(p)
-        
-        if fn[-3:] == 'csv': 
+
+        if fn[-3:] == 'csv':
 
             try:
                 mymagic = magic.Magic(mimetype=True)
             except:
                 mymagic = magic.Magic()
             mimetype = mymagic.from_file(p)
-    
+
             if mimetype == "text/plain" and (fn[-3:] == "ttl" or fn[-2:] == 'n3'):
                 mimetype = "text/turtle"
             if mimetype == "text/plain" and (fn[-3:] == "owl" or fn[-3:] == 'rdf'):
                 mimetype = "application/rdf+xml"
-    
+
             if os.path.isdir(p):
                 filetype = 'dir'
             else:
                 filetype = 'file'
-    
+
             relative_p = os.path.relpath(p, parent_path)
-    
+
             filelist.append({'label': fn, 'uri': relative_p, 'mimetype': mimetype, 'type': filetype})
 
     # Absolute parent is the absolute path of the parent of the current absolute path

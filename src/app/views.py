@@ -527,7 +527,7 @@ def dataset_save():
     dataset = req_json['dataset']
     dataset_path = os.path.join(config.base_path, dataset['file'])
 
-    fc.write_cache(dataset_path, dataset)
+    fc.write_cache(dataset_path, {'dataset': dataset})
     return jsonify({'code': 200, 'message': 'Success'})
 
 @app.route('/dataset/delete', methods=['GET'])
