@@ -80,12 +80,11 @@ def browse(parent_path, relative_path):
     absolute_path = os.path.join(parent_path, relative_path)
     log.debug('Browsing {}'.format(absolute_path))
     files = glob("{}/*".format(absolute_path))
-
     filelist = []
     for p in files:
         (pth, fn) = os.path.split(p)
 
-        if fn[-3:] == 'csv':
+        if fn[-3:] == 'csv' or os.path.isdir(p):
 
             try:
                 mymagic = magic.Magic(mimetype=True)
