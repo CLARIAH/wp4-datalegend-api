@@ -104,6 +104,7 @@ class Adapter(object):
             # print self.data[col][0]
 
             for i in counts.index:
+                print col, i
                 # The URI for the variable value
                 i_uri = iribaker.to_iri(u"{}/value/{}/{}"
                                         .format(self.dataset_uri, col, i))
@@ -227,7 +228,7 @@ class CsvAdapter(Adapter):
         self.has_header = dataset['header']
 
         with open(self.filename, 'r') as fn:
-            self.data = pd.DataFrame.from_csv(fn)
+            self.data = pd.read_csv(fn, index_col=0, parse_dates=True, encoding='utf-8')
 
         if self.has_header:
             self.header = list(self.data.columns)
