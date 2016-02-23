@@ -21,7 +21,11 @@ def read_cache(dataset_path):
         with open(dataset_cache_filename, 'r') as dataset_cache_file:
             dataset_definition = json.load(dataset_cache_file)
 
-        return dataset_definition
+        ## TODO: this is for backwards compatibility. Newer caches will contain the 'dataset' key
+        if 'dataset' in dataset_definition:
+            return dataset_definition
+        else:
+            return {'dataset': dataset_definition}
     else:
         return {}
 
