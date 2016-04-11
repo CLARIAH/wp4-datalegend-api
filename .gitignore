@@ -1,5 +1,8 @@
 .Python
 include/
 lib/
+bin/
 *.pyc
 pip-selfcheck.json
+.project
+.pydevproject
