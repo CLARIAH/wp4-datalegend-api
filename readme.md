@@ -7,8 +7,11 @@
 
 First, open a terminal or console and clone this git repository to a directory of your choice:
 
-`git clone https://github.com/CLARIAH/wp4-csdh-api.git`  
-(you can also download the source from Github)
+`git clone --recursive https://github.com/CLARIAH/wp4-csdh-api.git`  
+(you can also download the source from Github and pull the submodule:
+`git submodule init`
+`git submodule update`
+)
 
 Change directory to directory and then (to keep things nice and tidy) use [virtualenv](https://virtualenv.pypa.io/en/latest/installation.html) to create a virtual environment, and activate it:
 
