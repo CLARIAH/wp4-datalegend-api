@@ -22,10 +22,9 @@ Then install the required Python packages using [pip](https://pip.readthedocs.or
 
 `pip install -r requirements.txt`
 
-Copy the `config_template.py` file to `config.py` and make necessary changes (see documentation in the file).
+Copy the `/src/app/config_template.py` file to `/src/app/config.py` and make necessary changes (see documentation in the file).
 
-Change directory to `src` and then:
-
+Then, in directory `src` run: 
 `python run.py`
 
 the API will be running on <http://localhost:5000> (click this link, or copy it to your browser).
