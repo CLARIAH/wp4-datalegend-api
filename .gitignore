@@ -6,3 +6,6 @@ bin/
 pip-selfcheck.json
 .project
 .pydevproject
+.settings
+src/app/config.py
+src/app/static/swagger-ui
