@@ -535,7 +535,7 @@ def dataset_delete():
     """
     Remove a dataset from the CSDH
     Note that this requires one to specify the Nanopublication URI, not the dataset URI
-    **WARNING**: There is no authentication/authorization in place. Not tested!
+    **WARNING**: There is no authentication/authorization in place!
     ---
     tags:
         - Dataset

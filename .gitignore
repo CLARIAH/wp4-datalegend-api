@@ -8,4 +8,4 @@ pip-selfcheck.json
 .pydevproject
 .settings
 src/app/config.py
-src/app/static/swagger-ui
+src/latest_update.trig
