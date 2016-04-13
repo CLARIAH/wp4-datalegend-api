@@ -21,7 +21,12 @@ import util.csdh_client as cc
 
 from app import app, socketio
 
-import datacube.converter
+import importlib
+converter = importlib.import_module("app.wp4-converters.src.converter")
+
+
+
+# import datacube.converter
 
 log = app.logger
 log.setLevel(logging.DEBUG)
@@ -656,28 +661,43 @@ def dataset_submit():
     log.debug("Using {} as dataset hash".format(source_hash))
 
     log.debug("Starting conversion ...")
-    rdf_dataset = datacube.converter.data_structure_definition(
-        user,
-        dataset['name'],
-        dataset['uri'],
-        dataset['variables'],
-        dataset['file'],
-        source_hash)
-    log.debug("... done")
+    
+    
+    dirname = os.path.dirname(dataset['dataset'])
+    print dirname 
+
+    with open(dataset['dataset']) as dataset_file:
+        dataset = json.load(dataset_file)
+
+
+    c = converter.Converter(dataset['dataset'], dirname, user, target="output.nq")
+    c.setProcesses(1)
+    c.convert()
+
+
+
+#     rdf_dataset = datacube.converter.data_structure_definition(
+#         user,
+#         dataset['name'],
+#         dataset['uri'],
+#         dataset['variables'],
+#         dataset['file'],
+#         source_hash)
+#     log.debug("... done")
     # data = util.inspector.update(dataset)
     # socketio.emit('update', {'data': data}, namespace='/inspector')
 
-    log.debug("Starting serializer ...")
-    trig = datacube.converter.serializeTrig(rdf_dataset)
-    with open('latest_update.trig', 'w') as f:
-        f.write(trig)
-    log.debug("... done")
-
-    for graph in rdf_dataset.contexts():
-        graph_uri = graph.identifier
-        log.debug("Posting {} ...".format(graph_uri))
-        sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
-        log.debug("... done")
+#     log.debug("Starting serializer ...")
+#     trig = datacube.converter.serializeTrig(rdf_dataset)
+#     with open('latest_update.trig', 'w') as f:
+#         f.write(trig)
+#     log.debug("... done")
+# 
+#     for graph in rdf_dataset.contexts():
+#         graph_uri = graph.identifier
+#         log.debug("Posting {} ...".format(graph_uri))
+#         sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
+#         log.debug("... done")
 
     return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
 

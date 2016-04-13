@@ -9,3 +9,5 @@ pip-selfcheck.json
 .settings
 src/app/config.py
 src/latest_update.trig
+.DS_Store
+**/.DS_Store
