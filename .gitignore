@@ -11,3 +11,5 @@ src/app/config.py
 src/latest_update.trig
 .DS_Store
 **/.DS_Store
+*.nq
+*.nq.gz*

@@ -4,6 +4,9 @@ from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
 from rdflib import ConjunctiveGraph, Namespace, Literal, URIRef, RDF, RDFS, XSD
 
+import gzip
+import shutil
+
 import traceback
 import logging
 import json
@@ -657,7 +660,7 @@ def dataset_submit():
     req_json = request.get_json(force=True)
     dataset = req_json['dataset']
     user = req_json['user']    
-    outfile = dataset['file'].split(".")[0] + ".nq"
+    outfile = config.base_path + "/" + dataset['file'].split(".")[0] + ".nq"
     
 #     source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
 #     log.debug("Using {} as dataset hash".format(source_hash))
@@ -667,6 +670,10 @@ def dataset_submit():
     c.setProcesses(1)
     c.convert()
     log.debug("Conversion successful")
+    
+    log.debug("Gzipping dataset... ")
+    with open(outfile, 'rb') as f_in, gzip.open(outfile + ".gz", 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
     
     log.debug("Parsing dataset... ")
     g = ConjunctiveGraph()
