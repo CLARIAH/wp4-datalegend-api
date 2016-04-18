@@ -659,8 +659,8 @@ def dataset_submit():
     user = req_json['user']    
     outfile = dataset['file'].split(".")[0] + ".nq"
     
-    source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
-    log.debug("Using {} as dataset hash".format(source_hash))
+#     source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
+#     log.debug("Using {} as dataset hash".format(source_hash))
 
     log.debug("Starting conversion ...")
     c = converter.Converter(dataset, config.base_path, user, target=outfile)
