@@ -2,7 +2,7 @@
 from flask import render_template, request, jsonify
 from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
-
+from rdflib import ConjunctiveGraph, Namespace, Literal, URIRef, RDF, RDFS, XSD
 
 import traceback
 import logging
@@ -656,26 +656,37 @@ def dataset_submit():
 
     req_json = request.get_json(force=True)
     dataset = req_json['dataset']
-    user = req_json['user']
+    user = req_json['user']    
+    outfile = dataset['file'].split(".")[0] + ".nq"
+    
     source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
     log.debug("Using {} as dataset hash".format(source_hash))
 
     log.debug("Starting conversion ...")
-    
-    
-    dirname = os.path.dirname(dataset['dataset'])
-    print dirname 
-
-    with open(dataset['dataset']) as dataset_file:
-        dataset = json.load(dataset_file)
-
-
-    c = converter.Converter(dataset['dataset'], dirname, user, target="output.nq")
+    c = converter.Converter(dataset, config.base_path, user, target=outfile)
     c.setProcesses(1)
     c.convert()
+    log.debug("Conversion successful")
+    
+    log.debug("Parsing dataset... ")
+    g = ConjunctiveGraph()
+    data = open(outfile, "rb")
+    g.parse(data, format="nquads")
+    log.debug("DataSet parsed")
+    
+    for graph in g.contexts():
+        log.debug(g)
+        graph_uri = graph.identifier
+        log.debug("Posting {} ...".format(graph_uri))
+        sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
+        log.debug("... done")
+
+    return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
 
 
 
+
+#     old version 
 #     rdf_dataset = datacube.converter.data_structure_definition(
 #         user,
 #         dataset['name'],
@@ -684,22 +695,13 @@ def dataset_submit():
 #         dataset['file'],
 #         source_hash)
 #     log.debug("... done")
-    # data = util.inspector.update(dataset)
-    # socketio.emit('update', {'data': data}, namespace='/inspector')
 
 #     log.debug("Starting serializer ...")
 #     trig = datacube.converter.serializeTrig(rdf_dataset)
 #     with open('latest_update.trig', 'w') as f:
 #         f.write(trig)
 #     log.debug("... done")
-# 
-#     for graph in rdf_dataset.contexts():
-#         graph_uri = graph.identifier
-#         log.debug("Posting {} ...".format(graph_uri))
-#         sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
-#         log.debug("... done")
-
-    return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
+ 
 
 
 @app.route('/browse', methods=['GET'])
