@@ -9,7 +9,7 @@ log = app.logger
 log.setLevel(logging.DEBUG)
 
 
-PRIVATE_TOKEN = "YOURPRIVATETOKENHERE"
+PRIVATE_TOKEN = "ZDMRh1o7xCmigmxK8hqK"
 PROJECT = 15
 
 git = gitlab.Gitlab('http://gitlab.clariah-sdh.eculture.labs.vu.nl', token=PRIVATE_TOKEN)
@@ -31,6 +31,7 @@ def get_project_info():
 
 
 def add_file(file_path, content):
+
     success = git.updatefile(PROJECT,
                              file_path,
                              "master",
@@ -39,15 +40,17 @@ def add_file(file_path, content):
 
     if success:
         print "success"
-        (parent_path, filename) = os.path.split(file_path)
-
-        tree = git.getrepositorytree(PROJECT, path=parent_path)
-
-        file_info = (item for item in tree if item["name"] == filename).next()
-
         log.debug("Successfully added file to GitLab server")
 
-        return file_info
+#         (parent_path, filename) = os.path.split(file_path)
+#         tree = git.getrepositorytree(PROJECT, path=parent_path)
+#         file_info_tree = (item for item in tree if item["name"] == filename).next()
+
+        project_info = git.getproject(PROJECT)
+        file_info = git.getfile(PROJECT, file_path, "master")
+
+        url = project_info["web_url"] + "/raw/" + file_info["ref"] + "/" + file_info["file_path"]
+        return url
 
     else:
         raise Exception("Could not upload file to GitLab server")

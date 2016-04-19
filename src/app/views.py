@@ -4,7 +4,6 @@ from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
 from rdflib import ConjunctiveGraph, Namespace, Literal, URIRef, RDF, RDFS, XSD
 
-import gzip
 import shutil
 
 import traceback
@@ -19,6 +18,7 @@ import config
 import util.sparql_client as sc
 import util.file_client as fc
 import util.git_client as git_client
+import util.gitlab_client as gitlab_client
 import util.dataverse_client as dc
 import util.csdh_client as cc
 
@@ -26,8 +26,6 @@ from app import app, socketio
 
 import importlib
 converter = importlib.import_module("app.wp4-converters.src.converter")
-
-
 
 # import datacube.converter
 
@@ -660,24 +658,23 @@ def dataset_submit():
     req_json = request.get_json(force=True)
     dataset = req_json['dataset']
     user = req_json['user']    
-    outfile = config.base_path + "/" + dataset['file'].split(".")[0] + ".nq"
+    filename = dataset['file'].split(".")[0]
+    outfile = filename + ".nq"
     
-#     source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
-#     log.debug("Using {} as dataset hash".format(source_hash))
-
     log.debug("Starting conversion ...")
     c = converter.Converter(dataset, config.base_path, user, target=outfile)
     c.setProcesses(1)
     c.convert()
     log.debug("Conversion successful")
+
+    data = open(outfile, "rb")
     
-    log.debug("Gzipping dataset... ")
-    with open(outfile, 'rb') as f_in, gzip.open(outfile + ".gz", 'wb') as f_out:
-        shutil.copyfileobj(f_in, f_out)
-    
+    log.debug("Adding data to gitlab... ")
+    url = gitlab_client.add_file(outfile, data.read())
+    log.debug("Added to gitlab: " + url)
+
     log.debug("Parsing dataset... ")
     g = ConjunctiveGraph()
-    data = open(outfile, "rb")
     g.parse(data, format="nquads")
     log.debug("DataSet parsed")
     
@@ -688,27 +685,8 @@ def dataset_submit():
         sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
         log.debug("... done")
 
-    return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
+    return jsonify({'code': 200, 'message': 'Succesfully submitted converted data to CSDH', 'url': url})
 
-
-
-
-#     old version 
-#     rdf_dataset = datacube.converter.data_structure_definition(
-#         user,
-#         dataset['name'],
-#         dataset['uri'],
-#         dataset['variables'],
-#         dataset['file'],
-#         source_hash)
-#     log.debug("... done")
-
-#     log.debug("Starting serializer ...")
-#     trig = datacube.converter.serializeTrig(rdf_dataset)
-#     with open('latest_update.trig', 'w') as f:
-#         f.write(trig)
-#     log.debug("... done")
- 
 
 
 @app.route('/browse', methods=['GET'])
