@@ -675,6 +675,8 @@ def dataset_submit():
 
     log.debug("Parsing dataset... ")
     g = ConjunctiveGraph()
+    
+    data = open(outfile, "rb")
     g.parse(data, format="nquads")
     log.debug("DataSet parsed")
     
