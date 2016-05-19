@@ -1,7 +1,8 @@
-## CLARIAH Structured Data Hub API
+## CLARIAH DataLegend API
 **Author:**	Rinke Hoekstra  
 **Copyright:**	Rinke Hoekstra, VU University Amsterdam  
 **License:**	MIT License (see [license.txt](license.txt))  
+**Website:**  <http://datalegend.org>  
 
 ### Installation
 
