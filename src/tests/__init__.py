@@ -2,6 +2,9 @@ import unittest
 from pprint import pprint as pprint
 from datetime import datetime
 
+# How to use?
+#
+
 
 class TestLoad(unittest.TestCase):
 
@@ -44,6 +47,17 @@ class TestLoad(unittest.TestCase):
         import app.util.gitlab_client as gc
 
         print gc.add_file('test/test2.csv', "This is just a test... {}".format(datetime.utcnow().isoformat()))
+
+        assert True
+
+    def test_gitlab_browse(self):
+        import app.util.gitlab_client as gc
+
+        print gc.browse(None, '')
+
+        print gc.browse('', 'test')
+
+        assert True
 
 if __name__ == '__main__':
     unittest.main()
