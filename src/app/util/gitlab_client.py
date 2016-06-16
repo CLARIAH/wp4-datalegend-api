@@ -30,6 +30,32 @@ def get_project_info():
         log.error("Could not retrieve project info for project {}".format(PROJECT))
 
 
+def browse(base_path, relative_path):
+    # @base_path is necessary for legacy purposes (file browser)
+    # TODO: This currently does not work as it should, as the way we have to compute
+    # the parent path of the current path is unclear (we don't have that information)
+
+    log.debug('Browsing {}'.format(relative_path))
+
+    files = git.getrepositorytree(PROJECT, path=relative_path, ref_name='master')
+
+    filelist = []
+    for p in files:
+        path = "{}/{}".format(relative_path, p['name'])
+        if p['name'][-3:] == 'csv':
+            filelist.append({'label': p['name'], 'uri': path, 'mimetype': 'text/csv', 'type': 'file'})
+        elif p['type'] == 'tree':
+            filelist.append({'label': p['name'], 'uri': path, 'mimetype': 'inode/directory', 'type': 'dir'})
+
+    # TODO: This is where things break.
+    if base_path is '':
+        parent = None
+    else:
+        parent = {'label': '..', 'uri': parent_path, 'mimetype': 'inode/directory', 'type': 'dir'}
+
+    return filelist, parent
+
+
 def get_file(file_path, content):
     file_info = get_file_info(file_path)
     # TODO: This should actually be the file object. Let's first see how that ties into the code in views.py
