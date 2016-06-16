@@ -30,8 +30,20 @@ def get_project_info():
         log.error("Could not retrieve project info for project {}".format(PROJECT))
 
 
-def add_file(file_path, content):
+def get_file(file_path, content):
+    file_info = get_file_info(file_path)
+    # TODO: This should actually be the file object. Let's first see how that ties into the code in views.py
+    return file_info['url']
 
+def get_file_info(file_path):
+    project_info = git.getproject(PROJECT)
+    file_info = git.getfile(PROJECT, file_path, "master")
+
+    # Add 'url' to file_info
+    file_info['url'] = project_info["web_url"] + "/raw/" + file_info["ref"] + "/" + file_info["file_path"]
+
+
+def add_file(file_path, content):
     success = git.updatefile(PROJECT,
                              file_path,
                              "master",
@@ -39,18 +51,10 @@ def add_file(file_path, content):
                              "File uploaded by datalegend API {}".format(datetime.utcnow().isoformat()))
 
     if success:
-        print "success"
         log.debug("Successfully added file to GitLab server")
+        file_info = get_file_info(file_path)
 
-#         (parent_path, filename) = os.path.split(file_path)
-#         tree = git.getrepositorytree(PROJECT, path=parent_path)
-#         file_info_tree = (item for item in tree if item["name"] == filename).next()
-
-        project_info = git.getproject(PROJECT)
-        file_info = git.getfile(PROJECT, file_path, "master")
-
-        url = project_info["web_url"] + "/raw/" + file_info["ref"] + "/" + file_info["file_path"]
-        return url
-
+        return file_info
     else:
+        log.error("Could not upload file to GitLab server")
         raise Exception("Could not upload file to GitLab server")

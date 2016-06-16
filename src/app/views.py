@@ -657,10 +657,10 @@ def dataset_submit():
 
     req_json = request.get_json(force=True)
     dataset = req_json['dataset']
-    user = req_json['user']    
+    user = req_json['user']
     filename = dataset['file'].split(".")[0]
     outfile = filename + ".nq"
-    
+
     log.debug("Starting conversion ...")
     c = converter.Converter(dataset, config.base_path, user, target=outfile)
     c.setProcesses(1)
@@ -668,18 +668,19 @@ def dataset_submit():
     log.debug("Conversion successful")
 
     data = open(outfile, "rb")
-    
+
     log.debug("Adding data to gitlab... ")
-    url = gitlab_client.add_file(outfile, data.read())
-    log.debug("Added to gitlab: " + url)
+    file_info = gitlab_client.add_file(outfile, data.read())
+    log.debug("Added to gitlab: {} ({})".format(file_info['url'], file_info['commit_id']))
 
     log.debug("Parsing dataset... ")
     g = ConjunctiveGraph()
-    
+
+    ## TODO: This is really inefficient... why are we posting each graph separately?
     data = open(outfile, "rb")
     g.parse(data, format="nquads")
     log.debug("DataSet parsed")
-    
+
     for graph in g.contexts():
         log.debug(g)
         graph_uri = graph.identifier
@@ -687,7 +688,9 @@ def dataset_submit():
         sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
         log.debug("... done")
 
-    return jsonify({'code': 200, 'message': 'Succesfully submitted converted data to CSDH', 'url': url})
+    return jsonify({'code': 200,
+                    'message': 'Succesfully submitted converted data to CSDH',
+                    'url': file_info['url']})
 
 
 
