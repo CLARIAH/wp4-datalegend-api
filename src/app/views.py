@@ -693,7 +693,6 @@ def dataset_submit():
                     'url': file_info['url']})
 
 
-
 @app.route('/browse', methods=['GET'])
 def browse():
     """
@@ -769,8 +768,8 @@ def browse():
     if not path:
         raise Exception('Must specify a path!')
 
-    log.debug('Will browse absolute path: {}/{}'.format(config.base_path, path))
-    filelist, parent = fc.browse(config.base_path, path)
+    log.debug('Will browse path: {}'.format(path))
+    filelist, parent = gitlab_client.browse(None, path)
 
     return jsonify({'path': path, 'parent': parent, 'files': filelist})
 

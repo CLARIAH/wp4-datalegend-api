@@ -47,8 +47,11 @@ def browse(base_path, relative_path):
         elif p['type'] == 'tree':
             filelist.append({'label': p['name'], 'uri': path, 'mimetype': 'inode/directory', 'type': 'dir'})
 
+    [parent_path, _] = os.path.split(relative_path)
+
+    log.debug("Parent: {}".format(parent_path))
     # TODO: This is where things break.
-    if base_path is '':
+    if relative_path is '':
         parent = None
     else:
         parent = {'label': '..', 'uri': parent_path, 'mimetype': 'inode/directory', 'type': 'dir'}

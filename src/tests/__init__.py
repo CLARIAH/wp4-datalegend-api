@@ -53,9 +53,9 @@ class TestLoad(unittest.TestCase):
     def test_gitlab_browse(self):
         import app.util.gitlab_client as gc
 
-        print gc.browse(None, '')
+        print gc.browse(None, 'Users/Kathrin/Dropbox/hacking/csvw-parser_rdf_model/test/testdata')
 
-        print gc.browse('', 'test')
+        print gc.browse(None, 'test')
 
         assert True
 
