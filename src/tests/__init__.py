@@ -61,5 +61,12 @@ class TestLoad(unittest.TestCase):
 
         assert True
 
+    def test_gitlab_load_file(self):
+        import app.util.gitlab_client as gc
+
+        print gc.load('test', 'test/test2.csv', None)
+
+        assert True
+
 if __name__ == '__main__':
     unittest.main()
