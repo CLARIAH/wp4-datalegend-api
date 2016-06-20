@@ -49,11 +49,12 @@ def browse(base_path, relative_path):
 
     filelist = []
     for p in files:
+        log.debug("Found {}".format(p['name']))
         path = "{}/{}".format(relative_path, p['name'])
         if p['name'][-3:] == 'csv':
-            filelist.append({'label': p['name'], 'uri': path, 'mimetype': 'text/csv', 'type': 'file'})
+            filelist.append({'label': p['name'], 'uri': path, 'version': p['id'], 'mimetype': 'text/csv', 'type': 'file'})
         elif p['type'] == 'tree':
-            filelist.append({'label': p['name'], 'uri': path, 'mimetype': 'inode/directory', 'type': 'dir'})
+            filelist.append({'label': p['name'], 'uri': path, 'version': p['id'], 'mimetype': 'inode/directory', 'type': 'dir'})
 
     [parent_path, _] = os.path.split(relative_path)
 
