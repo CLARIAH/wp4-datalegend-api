@@ -3,8 +3,11 @@ import gitlab
 
 import os
 import json
+import base64
+import traceback
 
 from datetime import datetime
+from tempfile import NamedTemporaryFile
 
 import file_adapter as fa
 
@@ -73,17 +76,28 @@ def browse(base_path, relative_path):
     return filelist, parent
 
 
-def get_file(file_path, content):
+def get_file(file_path, format="CSV"):
     file_info = get_file_info(file_path)
-    # TODO: This should actually be the file object. Let's first see how that ties into the code in views.py
-    return file_info['url']
+
+    content = base64.b64decode(file_info['content'])
+
+    # TODO: completely untested
+    if format != "JSON":
+        return content
+    else:
+        return json.loads(content)
 
 def get_file_info(file_path):
     project_info = git.getproject(PROJECT)
     file_info = git.getfile(PROJECT, file_path, "master")
+    log.debug(file_info)
+    if file_info is not False:
+        # Add 'url' to file_info
+        file_info['url'] = project_info["web_url"] + "/raw/" + file_info["ref"] + "/" + file_info["file_path"]
 
-    # Add 'url' to file_info
-    file_info['url'] = project_info["web_url"] + "/raw/" + file_info["ref"] + "/" + file_info["file_path"]
+        return file_info
+    else:
+        raise Exception("Could not find file on GitLab: {}".format(file_path))
 
 
 def add_file(file_path, content):
@@ -107,16 +121,18 @@ def add_file(file_path, content):
 def read_cache(dataset_path):
     dataset_cache_filename = "{}.cache.json".format(dataset_path)
 
-    if os.path.exists(dataset_cache_filename):
-        with open(dataset_cache_filename, 'r') as dataset_cache_file:
-            dataset_definition = json.load(dataset_cache_file)
+    try:
+        dataset_definition = get_file(dataset_cache_filename, format='JSON')
 
-        ## TODO: this is for backwards compatibility. Newer caches will contain the 'dataset' key
+        # TODO: this is for backwards compatibility. Newer caches will contain the 'dataset' key
         if 'dataset' in dataset_definition:
             return dataset_definition
         else:
             return {'dataset': dataset_definition}
-    else:
+    except:
+        log.debug(traceback.format_exc())
+        log.info("Could not find cache file {}".format(dataset_path))
+
         return {}
 
 
@@ -131,9 +147,10 @@ def write_cache(dataset_path, dataset_definition):
 
 
 # TODO: Copied from File Client
-def load(dataset_name, relative_dataset_path, absolute_dataset_path):
+# @absolute_dataset_path is only there for backwards compatibility (ahum)
+def load(dataset_name, relative_dataset_path, absolute_dataset_path=None):
     # First try to load from cache
-    cached_dataset = read_cache(absolute_dataset_path)
+    cached_dataset = read_cache(relative_dataset_path)
     if cached_dataset != {}:
         log.info("Returning from cache")
         return cached_dataset
@@ -141,16 +158,25 @@ def load(dataset_name, relative_dataset_path, absolute_dataset_path):
     # Otherwise, we'll read the actual file
     log.info("Building new dataset dictionary")
 
+    dataset_contents = get_file(relative_dataset_path)
+
+    log.debug(dataset_contents)
+
+    f = NamedTemporaryFile()
+    f.write(dataset_contents)
+
     # Specify the dataset's details
     # TODO: this is hardcoded, and needs to be gleaned from the dataset file metadata
     dataset = {
-        'filename': absolute_dataset_path,
+        'filename': f.name,
         'header': True
     }
 
     log.debug("Initializing adapter for dataset")
     # Intialize a file a dapter for the dataset
     adapter = fa.get_adapter(dataset)
+
+    f.close()
 
     log.debug("Preparing dataset definition")
     # Prepare the data dictionary
@@ -162,6 +188,6 @@ def load(dataset_name, relative_dataset_path, absolute_dataset_path):
     }}
 
     # We write what we've read to cache
-    write_cache(absolute_dataset_path, dataset_definition)
+    # write_cache(absolute_dataset_path, dataset_definition)
 
     return dataset_definition
