@@ -37,7 +37,15 @@ def browse(base_path, relative_path):
 
     log.debug('Browsing {}'.format(relative_path))
 
+    # make sure that Gitlab understands what we mean by '.'
+    if relative_path == '.':
+        relative_path = ''
+
+    # remove any preceding slashes, as GitLab doesn't understand this.
+    relative_path = relative_path.lstrip('/')
+
     files = git.getrepositorytree(PROJECT, path=relative_path, ref_name='master')
+    log.debug("Found files: {}".format(files))
 
     filelist = []
     for p in files:
