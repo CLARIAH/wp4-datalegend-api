@@ -1,8 +1,13 @@
 import logging
 import gitlab
-from datetime import datetime
-from pprint import pprint as pprint
+
 import os
+import json
+
+from datetime import datetime
+
+import file_adapter as fa
+
 from app import app
 
 log = app.logger
@@ -96,3 +101,67 @@ def add_file(file_path, content):
     else:
         log.error("Could not upload file to GitLab server")
         raise Exception("Could not upload file to GitLab server")
+
+
+# TODO: Copied from File Client
+def read_cache(dataset_path):
+    dataset_cache_filename = "{}.cache.json".format(dataset_path)
+
+    if os.path.exists(dataset_cache_filename):
+        with open(dataset_cache_filename, 'r') as dataset_cache_file:
+            dataset_definition = json.load(dataset_cache_file)
+
+        ## TODO: this is for backwards compatibility. Newer caches will contain the 'dataset' key
+        if 'dataset' in dataset_definition:
+            return dataset_definition
+        else:
+            return {'dataset': dataset_definition}
+    else:
+        return {}
+
+
+# TODO: Copied from File Client
+def write_cache(dataset_path, dataset_definition):
+    dataset_cache_filename = "{}.cache.json".format(dataset_path)
+
+    with open(dataset_cache_filename, 'w') as dataset_cache_file:
+        json.dump(dataset_definition, dataset_cache_file)
+
+    log.debug("Written dataset definition to cache")
+
+
+# TODO: Copied from File Client
+def load(dataset_name, relative_dataset_path, absolute_dataset_path):
+    # First try to load from cache
+    cached_dataset = read_cache(absolute_dataset_path)
+    if cached_dataset != {}:
+        log.info("Returning from cache")
+        return cached_dataset
+
+    # Otherwise, we'll read the actual file
+    log.info("Building new dataset dictionary")
+
+    # Specify the dataset's details
+    # TODO: this is hardcoded, and needs to be gleaned from the dataset file metadata
+    dataset = {
+        'filename': absolute_dataset_path,
+        'header': True
+    }
+
+    log.debug("Initializing adapter for dataset")
+    # Intialize a file a dapter for the dataset
+    adapter = fa.get_adapter(dataset)
+
+    log.debug("Preparing dataset definition")
+    # Prepare the data dictionary
+    dataset_definition = {'dataset': {
+        'name': adapter.get_dataset_name(),
+        'uri': adapter.get_dataset_uri(),
+        'file': relative_dataset_path,
+        'variables': adapter.get_values(),
+    }}
+
+    # We write what we've read to cache
+    write_cache(absolute_dataset_path, dataset_definition)
+
+    return dataset_definition
