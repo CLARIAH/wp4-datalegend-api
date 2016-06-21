@@ -18,7 +18,7 @@ import config
 import util.sparql_client as sc
 import util.file_client as fc
 import util.git_client as git_client
-import util.gitlab_client as gitlab_client
+import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
 
@@ -267,7 +267,7 @@ def get_dataset_definition():
     absolute_dataset_path = os.path.join(config.base_path, dataset_path)
 
     log.debug('Dataset path: ' + dataset_path)
-    dataset_definition = fc.load(dataset_name, dataset_path, absolute_dataset_path)
+    dataset_definition = gc.load(dataset_name, dataset_path)
 
     return jsonify(dataset_definition)
 
@@ -670,7 +670,7 @@ def dataset_submit():
     data = open(outfile, "rb")
 
     log.debug("Adding data to gitlab... ")
-    file_info = gitlab_client.add_file(outfile, data.read())
+    file_info = gc.add_file(outfile, data.read())
     log.debug("Added to gitlab: {} ({})".format(file_info['url'], file_info['commit_id']))
 
     log.debug("Parsing dataset... ")
@@ -769,7 +769,7 @@ def browse():
         raise Exception('Must specify a path!')
 
     log.debug('Will browse path: {}'.format(path))
-    filelist, parent = gitlab_client.browse(None, path)
+    filelist, parent = gc.browse(None, path)
 
     return jsonify({'path': path, 'parent': parent, 'files': filelist})
 
