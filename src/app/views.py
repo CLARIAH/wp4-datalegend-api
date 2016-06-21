@@ -10,6 +10,7 @@ import traceback
 import logging
 import json
 import os
+import requests
 import gevent.subprocess as sp
 
 import iribaker
@@ -892,6 +893,54 @@ def dataverse_definition():
 
     dataset_relative_path = os.path.relpath(dataset_absolute_path, config.base_path)
     dataset_definition = fc.load(dataset_name, dataset_relative_path, dataset_absolute_path)
+
+    return jsonify(dataset_definition)
+
+@app.route('/web/definition')
+def web_definition():
+    """
+    Get dataset metadata from a URL
+    Loads the metadata for a file specified by the url and name parameters.
+    Response is the same as for `/dataset/definition`
+    ---
+      parameters:
+        - name: name
+          in: query
+          description: The name of the dataset file that is to be loaded
+          required: false
+          type: string
+          defaultValue: "Mortality.monthly_MadrasIndia.1916_1921.tab"
+        - name: url
+          in: query
+          description:
+            The URL address of the file that is to be loaded
+          required: false
+          type: string
+          defaultValue: "http://example.com/interesting/file.csv"
+      tags:
+        - Dataverse
+      responses:
+        '200':
+          description: Dataset metadata retrieved
+          schema:
+            $ref: "#/definitions/DatasetSchema"
+        default:
+          description: Unexpected error
+          schema:
+            $ref: "#/definitions/Message"
+    """
+    dataset_url = request.args.get('url', False)
+    dataset_name = request.args.get('name', False)
+
+    # Check whether a file has been provided
+    if not (dataset_url and dataset_name):
+        raise(Exception("""You should provide a file url and name"""))
+
+    response = requests.get(dataset_url)
+
+    file_info = gc.add_file(dataset_name, response.content)
+
+    dataset_definition = gc.load(dataset_name, dataset_name)
 
     return jsonify(dataset_definition)
 
