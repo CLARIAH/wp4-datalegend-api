@@ -46,9 +46,15 @@ class TestLoad(unittest.TestCase):
     def test_gitlab_add_file(self):
         import app.util.gitlab_client as gc
 
-        print gc.add_file('test/test2.csv', "This is just a test... {}".format(datetime.utcnow().isoformat()))
+        with open('tests/test.csv', 'r') as f:
+            contents = f.read()
+            file_info = gc.add_file('test/test.csv', contents)
 
-        assert True
+        if 'commit_id' in file_info:
+            print file_info['commit_id']
+            assert True
+        else:
+            assert False
 
     def test_gitlab_browse(self):
         import app.util.gitlab_client as gc
@@ -64,7 +70,7 @@ class TestLoad(unittest.TestCase):
     def test_gitlab_load_file(self):
         import app.util.gitlab_client as gc
 
-        print gc.load('test', 'test/test2.csv', None)
+        print gc.load('test', 'test/test.csv')
 
         assert True
 

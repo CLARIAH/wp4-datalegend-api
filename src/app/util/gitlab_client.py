@@ -77,17 +77,18 @@ def browse(base_path, relative_path):
 
 
 def get_file(file_path, format="CSV"):
-    file_info = get_file_info(file_path)
+    file_info = _get_file_info(file_path)
 
-    content = base64.b64decode(file_info['content'])
+    file_info['content'] = base64.b64decode(file_info['content'])
 
     # TODO: completely untested
     if format != "JSON":
-        return content
+        return file_info
     else:
-        return json.loads(content)
+        file_info['content'] = json.loads(file_info['content'])
+        return file_info
 
-def get_file_info(file_path):
+def _get_file_info(file_path):
     project_info = git.getproject(PROJECT)
     file_info = git.getfile(PROJECT, file_path, "master")
     log.debug(file_info)
@@ -100,16 +101,17 @@ def get_file_info(file_path):
         raise Exception("Could not find file on GitLab: {}".format(file_path))
 
 
-def add_file(file_path, content):
+def add_file(gitlab_file_path, content):
     success = git.updatefile(PROJECT,
-                             file_path,
+                             gitlab_file_path,
                              "master",
                              content,
                              "File uploaded by datalegend API {}".format(datetime.utcnow().isoformat()))
 
     if success:
         log.debug("Successfully added file to GitLab server")
-        file_info = get_file_info(file_path)
+        # This is really over the top for large files!!
+        file_info = get_file(gitlab_file_path)
 
         return file_info
     else:
@@ -117,12 +119,11 @@ def add_file(file_path, content):
         raise Exception("Could not upload file to GitLab server")
 
 
-# TODO: Copied from File Client
 def read_cache(dataset_path):
     dataset_cache_filename = "{}.cache.json".format(dataset_path)
 
     try:
-        dataset_definition = get_file(dataset_cache_filename, format='JSON')
+        dataset_definition = get_file(dataset_cache_filename, format='JSON')['content']
 
         # TODO: this is for backwards compatibility. Newer caches will contain the 'dataset' key
         if 'dataset' in dataset_definition:
@@ -135,20 +136,17 @@ def read_cache(dataset_path):
 
         return {}
 
-
-# TODO: Copied from File Client
 def write_cache(dataset_path, dataset_definition):
-    dataset_cache_filename = "{}.cache.json".format(dataset_path)
+    dataset_cache_path = "{}.cache.json".format(dataset_path)
 
-    with open(dataset_cache_filename, 'w') as dataset_cache_file:
-        json.dump(dataset_definition, dataset_cache_file)
+    add_file(dataset_cache_path, json.dumps(dataset_definition))
 
     log.debug("Written dataset definition to cache")
 
 
 # TODO: Copied from File Client
-# @absolute_dataset_path is only there for backwards compatibility (ahum)
-def load(dataset_name, relative_dataset_path, absolute_dataset_path=None):
+def load(dataset_name, relative_dataset_path):
+
     # First try to load from cache
     cached_dataset = read_cache(relative_dataset_path)
     if cached_dataset != {}:
@@ -158,25 +156,29 @@ def load(dataset_name, relative_dataset_path, absolute_dataset_path=None):
     # Otherwise, we'll read the actual file
     log.info("Building new dataset dictionary")
 
-    dataset_contents = get_file(relative_dataset_path)
+    dataset_info = get_file(relative_dataset_path)
+    dataset_content = dataset_info['content']
 
-    log.debug(dataset_contents)
+    log.debug(dataset_content)
 
-    f = NamedTemporaryFile()
-    f.write(dataset_contents)
+    [_, dataset_filename] = os.path.split(relative_dataset_path)
+
+    f = NamedTemporaryFile(suffix=dataset_filename, delete=False)
+    f.write(dataset_content)
+    f.close()
 
     # Specify the dataset's details
     # TODO: this is hardcoded, and needs to be gleaned from the dataset file metadata
     dataset = {
         'filename': f.name,
+        'name': dataset_name,
+        'version': dataset_info['commit_id'],
         'header': True
     }
 
     log.debug("Initializing adapter for dataset")
     # Intialize a file a dapter for the dataset
     adapter = fa.get_adapter(dataset)
-
-    f.close()
 
     log.debug("Preparing dataset definition")
     # Prepare the data dictionary
@@ -188,6 +190,6 @@ def load(dataset_name, relative_dataset_path, absolute_dataset_path=None):
     }}
 
     # We write what we've read to cache
-    # write_cache(absolute_dataset_path, dataset_definition)
+    write_cache(relative_dataset_path, dataset_definition)
 
     return dataset_definition
