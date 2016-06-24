@@ -6,10 +6,10 @@ base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file
                                          "<RELATIVE PATH TO DATA FOLDER>"))
 
 # Base URI for resources
-QBR_BASE = "http://data.socialhistory.org/resource/"
+QBR_BASE = "http://data.socialhistory.org/ns/resource/"
 
 # Base URI for vocabulary
-QBRV_BASE = "http://data.socialhistory.org/vocab/"
+QBRV_BASE = "http://data.socialhistory.org/ns/vocab/"
 
 # SPARQL Endpoint Configuration
 ENDPOINT_URL = '<URL OF SPARQL ENDPOINT>'
