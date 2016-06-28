@@ -65,6 +65,8 @@ def browse(base_path, relative_path):
             filelist.append({'label': p['name'], 'uri': path, 'version': p['id'], 'mimetype': 'inode/directory', 'type': 'dir'})
 
     [parent_path, _] = os.path.split(relative_path)
+    if parent_path == '':
+        parent_path = '/'
 
     log.debug("Parent: {}".format(parent_path))
     # TODO: This is where things break.
@@ -115,6 +117,7 @@ def add_file(gitlab_file_path, content):
 
         return file_info
     else:
+        log.debug(traceback.format_exc())
         log.error("Could not upload file to GitLab server")
         raise Exception("Could not upload file to GitLab server")
 
