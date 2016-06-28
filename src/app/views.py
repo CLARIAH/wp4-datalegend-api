@@ -18,7 +18,6 @@ import iribaker
 import config
 import util.sparql_client as sc
 import util.file_client as fc
-import util.git_client as git_client
 import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
@@ -532,9 +531,11 @@ def dataset_save():
     req_json = request.get_json(force=True)
 
     dataset = req_json['dataset']
-    dataset_path = os.path.join(config.base_path, dataset['file'])
+    # dataset_path = os.path.join(config.base_path, dataset['file'])
 
-    fc.write_cache(dataset_path, {'dataset': dataset})
+    gc.write_cache(dataset['file'], {'dataset': dataset})
+
+    # fc.write_cache(dataset_path, {'dataset': dataset})
     return jsonify({'code': 200, 'message': 'Success'})
 
 @app.route('/dataset/delete', methods=['GET'])
@@ -661,6 +662,9 @@ def dataset_submit():
     user = req_json['user']
     filename = dataset['file'].split(".")[0]
     outfile = filename + ".nq"
+
+    log.debug("Writing cache to gitlab")
+    gc.write_cache(dataset['file'], {'dataset': dataset})
 
     log.debug("Starting conversion ...")
     c = converter.Converter(dataset, config.base_path, user, target=outfile)
