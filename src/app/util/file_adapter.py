@@ -239,9 +239,9 @@ class CsvAdapter(Adapter):
 
         if file_object is None:
             with open(self.filename, 'r') as fn:
-                self.data = pd.read_csv(fn, index_col=0, parse_dates=True, encoding='utf-8')
+                self.data = pd.read_csv(fn, index_col=False, parse_dates=True, encoding='utf-8')
         else:
-            self.data = pd.read_csv(file_object, index_col=0, parse_dates=True, encoding='utf-8')
+            self.data = pd.read_csv(file_object, index_col=False, parse_dates=True, encoding='utf-8')
 
         if self.has_header:
             self.header = list(self.data.columns)
@@ -325,9 +325,9 @@ class TabAdapter(Adapter):
 
         if file_object is None:
             with open(self.filename, 'r') as fn:
-                self.data = pd.DataFrame.from_csv(fn, sep='\t')
+                self.data = pd.DataFrame.from_csv(fn, index_col=False, sep='\t')
         else:
-            self.data = pd.DataFrame.from_csv(file_object, sep='\t')
+            self.data = pd.DataFrame.from_csv(file_object, index_col=False, sep='\t')
 
         if self.has_header:
             self.header = list(self.data.columns)
@@ -363,6 +363,12 @@ def get_adapter(dataset, file_object=None):
     elif dataset['filename'].endswith('.csv'):
         mimetype = 'text/csv'
         # Make sure we set the guessed mimetype as format for the dataset
+        dataset['format'] = mimetype
+    elif dataset['filename'].endswith('.xls'):
+        mimetype = 'application/vnd.ms-excel'
+        dataset['format'] = mimetype
+    elif dataset['filename'].endswith('.xlsx'):
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         dataset['format'] = mimetype
     else:
         csv_fileh = open(dataset['filename'], 'rb')
