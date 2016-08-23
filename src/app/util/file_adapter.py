@@ -228,7 +228,7 @@ class CsvAdapter(Adapter):
         self.has_header = dataset['header']
 
         with open(self.filename, 'r') as fn:
-            self.data = pd.read_csv(fn, index_col=0, parse_dates=True, encoding='utf-8')
+            self.data = pd.read_csv(fn, index_col=False, parse_dates=True, encoding='utf-8')
 
         if self.has_header:
             self.header = list(self.data.columns)
@@ -308,7 +308,7 @@ class TabAdapter(Adapter):
         self.has_header = dataset['header']
 
         with open(self.filename, 'r') as fn:
-            self.data = pd.DataFrame.from_csv(fn, sep='\t')
+            self.data = pd.DataFrame.from_csv(fn, index_col=False, sep='\t')
         if self.has_header:
             self.header = list(self.data.columns)
         elif self.metadata:
