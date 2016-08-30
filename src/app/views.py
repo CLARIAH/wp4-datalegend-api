@@ -666,13 +666,18 @@ def dataset_submit():
     log.debug("Writing cache to gitlab")
     gc.write_cache(dataset['file'], {'dataset': dataset})
 
+    temp_outfile = '/tmp/{}'.format(outfile)
+    log.debug("Writing to {}".format(temp_outfile))
     log.debug("Starting conversion ...")
-    c = converter.Converter(dataset, config.base_path, user, target=outfile)
+    if 'path' in dataset:
+        c = converter.Converter(dataset, config.base_path, user, source=dataset['path'], target=temp_outfile)
+    else:
+        c = converter.Converter(dataset, config.base_path, user, target=temp_outfile)
     c.setProcesses(1)
     c.convert()
     log.debug("Conversion successful")
 
-    data = open(outfile, "rb")
+    data = open(temp_outfile, "rb")
 
     log.debug("Adding data to gitlab... ")
     file_info = gc.add_file(outfile, data.read())
@@ -682,7 +687,7 @@ def dataset_submit():
     g = ConjunctiveGraph()
 
     ## TODO: This is really inefficient... why are we posting each graph separately?
-    data = open(outfile, "rb")
+    data = open(temp_outfile, "rb")
     g.parse(data, format="nquads")
     log.debug("DataSet parsed")
 
