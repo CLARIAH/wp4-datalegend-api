@@ -8,7 +8,7 @@
 
 First, open a terminal or console and clone this git repository to a directory of your choice:
 
-`git clone --recursive https://github.com/CLARIAH/wp4-csdh-api.git --branch 1.0.0-beta`
+`git clone --recursive https://github.com/CLARIAH/wp4-datalegend-api.git --branch 1.0.0-beta`
 (1.0.0-beta is currently the latest version)
 (you can also download the source from Github and pull the submodule:
 `git submodule init`
@@ -27,14 +27,16 @@ Then install the required Python packages using [pip](https://pip.readthedocs.or
 
 `pip install -r requirements.txt`
 
-Copy the `/src/app/config_template.py` file to `/src/app/config.py` and make necessary changes (see documentation in the file).
+This should also install all necessary packages for the `wp4-converters` package, but if this is not the case, you can `pip install -r src/app/wp4-converters/requirements.txt` as well
 
-Then, in directory `src` run: 
+Copy the `src/app/config_template.py` file to `src/app/config.py` and make necessary changes (see documentation in the file).
+
+Then, in directory `src` run:
 
 `python run.py`
 
 the API will be running on <http://localhost:5000> (click this link, or copy it to your browser).
 
-Go to <http://localhost:5000/specs> to view the API specs in JSON schema format (Swagger)
+Go to <http://localhost:5000/api-docs> to view the API specs in the Swagger UI
 
 Make sure to always activate the `virtualenv` before running the API again.
