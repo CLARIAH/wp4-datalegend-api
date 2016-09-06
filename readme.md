@@ -8,7 +8,8 @@
 
 First, open a terminal or console and clone this git repository to a directory of your choice:
 
-`git clone --recursive https://github.com/CLARIAH/wp4-csdh-api.git`  
+`git clone --recursive https://github.com/CLARIAH/wp4-csdh-api.git --branch 1.0.0-beta`
+(1.0.0-beta is currently the latest version)
 (you can also download the source from Github and pull the submodule:
 `git submodule init`
 `git submodule update`
