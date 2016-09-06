@@ -22,6 +22,8 @@ import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
 
+from tempfile import NamedTemporaryFile
+
 from app import app, socketio
 
 import importlib
@@ -263,8 +265,8 @@ def get_dataset_definition():
                         the file you want to load, and specify its name"""))
 
     dataset_name = os.path.basename(dataset_path)
-    # Create an absolute path
-    absolute_dataset_path = os.path.join(config.base_path, dataset_path)
+    # DEPRECATED: Create an absolute path
+    # absolute_dataset_path = os.path.join(config.base_path, dataset_path)
 
     log.debug('Dataset path: ' + dataset_path)
     dataset_definition = gc.load(dataset_name, dataset_path)
@@ -660,19 +662,29 @@ def dataset_submit():
     req_json = request.get_json(force=True)
     dataset = req_json['dataset']
     user = req_json['user']
-    filename = dataset['file'].split(".")[0]
-    outfile = filename + ".nq"
+
+    outfile = dataset['file'] + ".nq"
 
     log.debug("Writing cache to gitlab")
     gc.write_cache(dataset['file'], {'dataset': dataset})
 
-    temp_outfile = '/tmp/{}'.format(outfile)
+    log.debug(dataset['file'])
+    filename = gc.get_local_file_path(dataset['file'])
+    log.debug("Reading from {}".format(filename))
+
+    temp_outfile = gc.get_local_file_path(outfile)
     log.debug("Writing to {}".format(temp_outfile))
+
     log.debug("Starting conversion ...")
+
     if 'path' in dataset:
-        c = converter.Converter(dataset, config.base_path, user, source=dataset['path'], target=temp_outfile)
+        # TODO: check when there's a path in dataset... where does this happen, and what is it for?
+        log.debug("There's a path in this dataset")
+        c = converter.Converter(dataset, '/tmp/', user, source=dataset['path'], target=temp_outfile)
     else:
-        c = converter.Converter(dataset, config.base_path, user, target=temp_outfile)
+        log.debug("There is no path in this dataset, filename is {}".format(filename))
+        c = converter.Converter(dataset, '/tmp/', user, source=filename, target=temp_outfile)
+
     c.setProcesses(1)
     c.convert()
     log.debug("Conversion successful")
@@ -774,7 +786,6 @@ def browse():
                 type: string
     """
     path = request.args.get('path', None)
-
     if not path:
         raise Exception('Must specify a path!')
 

@@ -7,10 +7,10 @@ import base64
 import traceback
 
 from datetime import datetime
-from tempfile import NamedTemporaryFile
 
 import file_adapter as fa
 
+import tempfile
 from app import app
 
 log = app.logger
@@ -22,6 +22,8 @@ PROJECT = 15
 
 git = gitlab.Gitlab('http://gitlab.clariah-sdh.eculture.labs.vu.nl', token=PRIVATE_TOKEN)
 
+
+TMP_DIR = tempfile.mkdtemp()
 
 def list_projects():
     projects = list(git.getall(git.getprojects))
@@ -146,39 +148,55 @@ def write_cache(dataset_path, dataset_definition):
 
     log.debug("Written dataset definition to cache")
 
+def get_local_file_path(relative_dataset_path):
+    # Retrieve the filename from the path relative to the repository root
+    [dataset_file_path, dataset_filename] = os.path.split(relative_dataset_path)
+
+    # The directory inside the temporary dir for storing this dataset
+    tmp_file_directory = os.path.join(TMP_DIR, dataset_file_path)
+    # The full path of the file that will hold the dataset
+    filename = os.path.join(tmp_file_directory, dataset_filename)
+
+    # Create the needed directories for storing the files
+    try:
+        os.makedirs(tmp_file_directory)
+    except:
+        log.warning("The temporary file directory {} probably already exists... ".format(tmp_file_directory))
+
+    return filename
+
 
 # TODO: Copied from File Client
 def load(dataset_name, relative_dataset_path):
 
     # First try to load from cache
     cached_dataset = read_cache(relative_dataset_path)
+
+    # Retrieve the dataset file from GitLab
+    dataset_info = get_file(relative_dataset_path)
+    # This is the actual content of the file
+    dataset_content = dataset_info['content']
+
+    filename = get_local_file_path(relative_dataset_path)
+
+    print filename
+    with open(filename, 'w') as f:
+        f.write(dataset_content)
+
     if cached_dataset != {}:
-        log.info("Returning from cache")
+        log.info("Returning from cache, but after downloading the file to {}... just in case".format(filename))
         return cached_dataset
 
     # Otherwise, we'll read the actual file
     log.info("Building new dataset dictionary")
 
-    dataset_info = get_file(relative_dataset_path)
-    dataset_content = dataset_info['content']
-
-    log.debug(dataset_content)
-
-    [_, dataset_filename] = os.path.split(relative_dataset_path)
-
-    f = NamedTemporaryFile(suffix=dataset_filename, delete=False)
-    f.write(dataset_content)
-    f.close()
-
-    # Specify the dataset's details
     # TODO: this is hardcoded, and needs to be gleaned from the dataset file metadata
     dataset = {
-        'filename': f.name,
+        'filename': filename,
         'name': dataset_name,
         'version': dataset_info['commit_id'],
         'header': True
     }
-
     log.debug("Initializing adapter for dataset")
     # Intialize a file a dapter for the dataset
     adapter = fa.get_adapter(dataset)
