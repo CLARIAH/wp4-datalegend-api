@@ -14,7 +14,7 @@ First, open a terminal or console and clone this git repository to a directory o
 `git submodule update`
 )
 
-Change directory to directory and then (to keep things nice and tidy) use [virtualenv](https://virtualenv.pypa.io/en/latest/installation.html) to create a virtual environment, and activate it:
+Change directory to wp4-datalegend-api directory and then (to keep things nice and tidy) use [virtualenv](https://virtualenv.pypa.io/en/latest/installation.html) to create a virtual environment, and activate it:
 
 `virtualenv .`
 
