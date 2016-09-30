@@ -786,8 +786,15 @@ def browse():
                 type: string
     """
     path = request.args.get('path', None)
-    if not path:
-        raise Exception('Must specify a path!')
+    username = request.args.get('user', None)
+
+    if path is None or username is None:
+        raise Exception('Must specify path and username!')
+
+    # Make sure users can only browse their own datasets
+    # TODO: This is only a cosmetic safety against users browsing data uploaded by others.
+    if path == '.' or path == '/':
+        path = '/{}'.format(username)
 
     log.debug('Will browse path: {}'.format(path))
     filelist, parent = gc.browse(None, path)
