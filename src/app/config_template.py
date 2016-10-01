@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 # Copy this file to 'config.py' and make necessary changes for your local setup.
-import os
 
-# Set the path to a folder where you store original data (CSV) files.
-# DEPRECATED: This variable is still needed, but not actually used.
-base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                         "<RELATIVE PATH TO DATA FOLDER>"))
+# Path to a directory where temporary files can be written
+# (must be read/writable by the user that owns of the server process)
+TEMP_PATH = "/tmp"
 
 # Base URI for resources
 QBR_BASE = "http://data.socialhistory.org/resource/"
