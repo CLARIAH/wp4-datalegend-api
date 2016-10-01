@@ -660,44 +660,40 @@ def dataset_submit():
     dataset = req_json['dataset']
     user = req_json['user']
 
-    outfile = dataset['file'] + ".nq"
-
     log.debug("Writing cache to gitlab")
     gc.write_cache(dataset['file'], {'dataset': dataset})
 
-    log.debug(dataset['file'])
-    filename = gc.get_local_file_path(dataset['file'])
-    log.debug("Reading from {}".format(filename))
+    source_filename = gc.get_local_file_path(dataset['file'])
+    log.debug("Converter will be reading from {}".format(source_filename))
 
-    temp_outfile = gc.get_local_file_path(outfile)
-    log.debug("Writing to {}".format(temp_outfile))
+    outfile = dataset['file'] + ".nq"
+    target_filename = gc.get_local_file_path(outfile)
+    log.debug("Converter will be writing to {}".format(target_filename))
 
     log.debug("Starting conversion ...")
-
     if 'path' in dataset:
         # TODO: check when there's a path in dataset... where does this happen, and what is it for?
         log.debug("There's a path in this dataset")
-        c = converter.Converter(dataset, '/tmp/', user, source=dataset['path'], target=temp_outfile)
+        c = converter.Converter(dataset, '/tmp/', user, source=dataset['path'], target=target_filename)
     else:
-        log.debug("There is no path in this dataset, filename is {}".format(filename))
-        c = converter.Converter(dataset, '/tmp/', user, source=filename, target=temp_outfile)
+        log.debug("There is no path in this dataset, filename is {}".format(source_filename))
+        c = converter.Converter(dataset, '/tmp/', user, source=source_filename, target=target_filename)
 
     c.setProcesses(1)
     c.convert()
     log.debug("Conversion successful")
 
-    data = open(temp_outfile, "rb")
+    with open(target_filename, "rb") as nquads_file:
+        data = nquads_file.read()
 
     log.debug("Adding data to gitlab... ")
-    file_info = gc.add_file(outfile, data.read())
+    file_info = gc.add_file(outfile, data)
     log.debug("Added to gitlab: {} ({})".format(file_info['url'], file_info['commit_id']))
 
     log.debug("Parsing dataset... ")
     g = ConjunctiveGraph()
-
-    ## TODO: This is really inefficient... why are we posting each graph separately?
-    data = open(temp_outfile, "rb")
-    g.parse(data, format="nquads")
+    # TODO: This is really inefficient... why are we posting each graph separately?
+    g.parse(data=data, format="nquads")
     log.debug("DataSet parsed")
 
     for graph in g.contexts():
