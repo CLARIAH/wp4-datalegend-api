@@ -2,10 +2,7 @@
 from flask import render_template, request, jsonify
 from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
-from rdflib import ConjunctiveGraph, Namespace, Literal, URIRef, RDF, RDFS, XSD
-
-import shutil
-
+from rdflib import ConjunctiveGraph
 import traceback
 import logging
 import json
@@ -22,7 +19,6 @@ import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
 
-from tempfile import NamedTemporaryFile
 
 from app import app, socketio
 
@@ -266,7 +262,7 @@ def get_dataset_definition():
 
     dataset_name = os.path.basename(dataset_path)
     # DEPRECATED: Create an absolute path
-    # absolute_dataset_path = os.path.join(config.base_path, dataset_path)
+    # absolute_dataset_path = os.path.join(config.TEMP_PATH, dataset_path)
 
     log.debug('Dataset path: ' + dataset_path)
     dataset_definition = gc.load(dataset_name, dataset_path)
@@ -533,12 +529,13 @@ def dataset_save():
     req_json = request.get_json(force=True)
 
     dataset = req_json['dataset']
-    # dataset_path = os.path.join(config.base_path, dataset['file'])
+    # dataset_path = os.path.join(config.TEMP_PATH, dataset['file'])
 
     gc.write_cache(dataset['file'], {'dataset': dataset})
 
     # fc.write_cache(dataset_path, {'dataset': dataset})
     return jsonify({'code': 200, 'message': 'Success'})
+
 
 @app.route('/dataset/delete', methods=['GET'])
 def dataset_delete():
@@ -916,12 +913,13 @@ def dataverse_definition():
         raise(Exception("""You should provide a file id and name"""))
 
     dataverse_connection = dc.Connection()
-    dataset_absolute_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
+    dataset_absolute_path = dataverse_connection.access(dataset_name, dataset_id, config.TEMP_PATH)
 
-    dataset_relative_path = os.path.relpath(dataset_absolute_path, config.base_path)
+    dataset_relative_path = os.path.relpath(dataset_absolute_path, config.TEMP_PATH)
     dataset_definition = fc.load(dataset_name, dataset_relative_path, dataset_absolute_path)
 
     return jsonify(dataset_definition)
+
 
 @app.route('/web/definition')
 def web_definition():
@@ -965,7 +963,7 @@ def web_definition():
 
     response = requests.get(dataset_url)
 
-    file_info = gc.add_file(dataset_name, response.content)
+    gc.add_file(dataset_name, response.content)
 
     dataset_definition = gc.load(dataset_name, dataset_name)
 

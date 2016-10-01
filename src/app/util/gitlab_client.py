@@ -22,16 +22,18 @@ PROJECT = 15
 
 git = gitlab.Gitlab('http://gitlab.clariah-sdh.eculture.labs.vu.nl', token=PRIVATE_TOKEN)
 
+TEMP_PATH = app.config['TEMP_PATH']
 
-TMP_DIR = tempfile.mkdtemp()
 
 def list_projects():
+    """Retrieves the project ids for all projects this user is involved in."""
     projects = list(git.getall(git.getprojects))
 
     return projects
 
 
 def get_project_info():
+    """Retrieves project info, given a project ID (stored in @PROJECT)"""
     try:
         info = git.getproject(PROJECT)
         log.debug("Retrieved project info from Gitlab for project {}".format(PROJECT))
@@ -92,6 +94,7 @@ def get_file(file_path, format="CSV"):
         file_info['content'] = json.loads(file_info['content'])
         return file_info
 
+
 def _get_file_info(file_path):
     project_info = git.getproject(PROJECT)
     file_info = git.getfile(PROJECT, file_path, "master")
@@ -141,6 +144,7 @@ def read_cache(dataset_path):
 
         return {}
 
+
 def write_cache(dataset_path, dataset_definition):
     dataset_cache_path = "{}.cache.json".format(dataset_path)
 
@@ -148,12 +152,13 @@ def write_cache(dataset_path, dataset_definition):
 
     log.debug("Written dataset definition to cache")
 
+
 def get_local_file_path(relative_dataset_path):
     # Retrieve the filename from the path relative to the repository root
     [dataset_file_path, dataset_filename] = os.path.split(relative_dataset_path)
 
     # The directory inside the temporary dir for storing this dataset
-    tmp_file_directory = os.path.join(TMP_DIR, dataset_file_path)
+    tmp_file_directory = os.path.join(TEMP_PATH, dataset_file_path)
     # The full path of the file that will hold the dataset
     filename = os.path.join(tmp_file_directory, dataset_filename)
 
@@ -198,6 +203,7 @@ def load(dataset_name, relative_dataset_path):
         'header': True
     }
     log.debug("Initializing adapter for dataset")
+
     # Intialize a file a dapter for the dataset
     adapter = fa.get_adapter(dataset)
 
