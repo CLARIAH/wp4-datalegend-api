@@ -723,6 +723,11 @@ def browse():
           required: true
           type: string
           defaultValue: .
+        - name: user
+          in: query
+          description: The email address of the Google user id
+          required: true
+          type: string
       responses:
         '200':
           description: Path retrieved
@@ -778,10 +783,11 @@ def browse():
               message:
                 type: string
     """
-    path = request.args.get('path', None)
-    username = request.args.get('user', None)
+    path = request.args.get('path', False)
+    username = request.args.get('user', False)
 
-    if path is None or username is None:
+    if not(path and username):
+        log.debug("{}/{}".format(path, username))
         raise Exception('Must specify path and username!')
 
     # Make sure users can only browse their own datasets
@@ -889,6 +895,11 @@ def dataverse_definition():
           required: false
           type: string
           defaultValue: 2531997
+        - name: user
+          in: query
+          description: The email address of the Google user id
+          required: true
+          type: string
       tags:
         - Dataverse
       responses:
@@ -903,18 +914,28 @@ def dataverse_definition():
     """
     dataset_id = request.args.get('id', False)
     dataset_name = request.args.get('name', False)
+    username = request.args.get('user', False)
 
+    log.debug("Dataverse dataset: {}/{}".format(dataset_id, dataset_name))
     # Check whether a file has been provided
-    if not (dataset_id and dataset_name):
-        raise(Exception("""You should provide a file id and name"""))
+    if not(dataset_id and dataset_name and username):
+        raise(Exception("""You should provide a file id, name and user"""))
 
-    dataverse_connection = dc.Connection()
-    dataset_absolute_path = dataverse_connection.access(dataset_name, dataset_id, config.TEMP_PATH)
+    dataset_url = dc.Connection().get_access_url(dataset_id)
+    log.debug("Dataverse url: {}".format(dataset_url))
 
-    dataset_relative_path = os.path.relpath(dataset_absolute_path, config.TEMP_PATH)
-    dataset_definition = fc.load(dataset_name, dataset_relative_path, dataset_absolute_path)
+    response = requests.get(dataset_url)
 
-    return jsonify(dataset_definition)
+    dataset_path = "{}/{}".format(username, dataset_name)
+
+    log.debug(dataset_path)
+    if response.status_code == 200:
+        gc.add_file(dataset_path, response.content)
+
+        dataset_definition = gc.load(dataset_path, dataset_path)
+        return jsonify(dataset_definition)
+    else:
+        raise(Exception("The dataset with URI {} could not be retrieved from Dataverse".format(dataset_url)))
 
 
 @app.route('/web/definition')

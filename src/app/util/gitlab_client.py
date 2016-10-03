@@ -10,7 +10,6 @@ from datetime import datetime
 
 import file_adapter as fa
 
-import tempfile
 from app import app
 
 log = app.logger
@@ -65,6 +64,8 @@ def browse(base_path, relative_path):
         path = "{}/{}".format(relative_path, p['name'])
         if p['name'][-3:] == 'csv':
             filelist.append({'label': p['name'], 'uri': path, 'version': p['id'], 'mimetype': 'text/csv', 'type': 'file'})
+        elif p['name'][-3:] == 'tab':
+            filelist.append({'label': p['name'], 'uri': path, 'version': p['id'], 'mimetype': 'text/tab-separated-values', 'type': 'file'})
         elif p['type'] == 'tree':
             filelist.append({'label': p['name'], 'uri': path, 'version': p['id'], 'mimetype': 'inode/directory', 'type': 'dir'})
 
