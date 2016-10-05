@@ -973,16 +973,24 @@ def web_definition():
     """
     dataset_url = request.args.get('url', False)
     dataset_name = request.args.get('name', False)
+    username = request.args.get('user', False)
 
+    log.debug("Web dataset: {}/{}".format(dataset_url, dataset_name))
     # Check whether a file has been provided
-    if not (dataset_url and dataset_name):
-        raise(Exception("""You should provide a file url and name"""))
+    if not(dataset_url and dataset_name and username):
+        raise(Exception("""You should provide a file id, name and user"""))
 
     response = requests.get(dataset_url)
 
-    gc.add_file(dataset_name, response.content)
+    dataset_path = "{}/{}".format(username, dataset_name)
 
-    dataset_definition = gc.load(dataset_name, dataset_name)
+    if response.status_code == 200:
+        gc.add_file(dataset_path, response.content)
+
+        dataset_definition = gc.load(dataset_path, dataset_path)
+        return jsonify(dataset_definition)
+    else:
+        raise(Exception("The dataset with URI {} could not be retrieved from the Web".format(dataset_url)))
 
     return jsonify(dataset_definition)
 
