@@ -99,7 +99,7 @@ def get_file(file_path, format="CSV"):
 def _get_file_info(file_path):
     project_info = git.getproject(PROJECT)
     file_info = git.getfile(PROJECT, file_path, "master")
-    log.debug(file_info)
+    # log.debug(file_info)
     if file_info is not False:
         # Add 'url' to file_info
         file_info['url'] = project_info["web_url"] + "/raw/" + file_info["ref"] + "/" + file_info["file_path"]
@@ -110,11 +110,14 @@ def _get_file_info(file_path):
 
 
 def add_file(gitlab_file_path, content):
+    log.debug("Adding content as file to {}".format(gitlab_file_path))
+
     success = git.updatefile(PROJECT,
                              gitlab_file_path,
                              "master",
                              content,
                              "File uploaded by datalegend API {}".format(datetime.utcnow().isoformat()))
+
 
     if success:
         log.debug("Successfully added file to GitLab server")
