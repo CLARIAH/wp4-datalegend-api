@@ -99,6 +99,12 @@ class Adapter(object):
             print "No header or no metadata present"
             return False
 
+    def get_data(self):
+        """
+        Return the CSV file as a dictionary ('column': [list of values])
+        """
+        return self.data.fillna(value='').to_dict(orient='list')
+
     def get_values(self):
         """
         Return all unique values, and converts it to samples for each column.

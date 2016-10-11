@@ -218,6 +218,7 @@ def load(dataset_name, relative_dataset_path):
         'uri': adapter.get_dataset_uri(),
         'file': relative_dataset_path,
         'variables': adapter.get_values(),
+        'data': adapter.get_data()
     }}
 
     # We write what we've read to cache
