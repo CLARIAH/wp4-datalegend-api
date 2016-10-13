@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copy this file to 'config.py' and make necessary changes for your local setup.
 
+# Add the converters module to the python path
+import sys
+sys.path.append("wp4-converters/src")
+
 # Path to a directory where temporary files can be written
 # (must be read/writable by the user that owns of the server process)
 TEMP_PATH = "/tmp"

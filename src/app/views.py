@@ -13,19 +13,17 @@ import gevent.subprocess as sp
 import iribaker
 
 import config
+
+# Converter can only be imported after the config (since that module sets the python path)
+import converter
+
 import util.sparql_client as sc
 import util.file_client as fc
 import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
 
-
 from app import app, socketio
-
-import importlib
-converter = importlib.import_module("app.wp4-converters.src.converter")
-
-# import datacube.converter
 
 log = app.logger
 log.setLevel(logging.DEBUG)

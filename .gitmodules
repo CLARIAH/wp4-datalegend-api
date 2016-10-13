@@ -2,5 +2,5 @@
 	path = src/app/static/swagger-ui
 	url = https://github.com/swagger-api/swagger-ui.git
 [submodule "src/app/wp4-converters"]
-	path = src/app/wp4-converters
+	path = src/wp4-converters
 	url = https://github.com/CLARIAH/wp4-converters.git
