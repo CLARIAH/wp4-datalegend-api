@@ -79,17 +79,23 @@ class Connection(object):
 
         return filename
 
+    def get_access_url(self, identifier):
+        url = self.access_url.format(identifier)
+
+        return url
+
     def retrieve_files(self, dataset_metadata):
         files = []
         for f in dataset_metadata['files']:
-            print f['datafile']
-            if f['datafile']['contentType'] in ['text/tab-separated-values', 'text/csv']:
+            print f['dataFile']
+
+            if f['dataFile']['contentType'] in ['text/tab-separated-values', 'text/csv']:
                 print "This is a tab or csv file"
 
                 files.append(
-                    {'label': f['datafile']['name'],
-                     'uri': str(f['datafile']['id']),
-                     'mimetype': f['datafile']['contentType'],
+                    {'label': f['dataFile']['filename'],
+                     'uri': str(f['dataFile']['id']),
+                     'mimetype': f['dataFile']['contentType'],
                      'type': 'dataverse'}
                 )
 

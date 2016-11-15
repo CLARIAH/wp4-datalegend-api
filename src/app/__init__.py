@@ -55,6 +55,7 @@ app.debug = config.DEBUG
 
 # Set the secret key
 app.config['SECRET_KEY'] = 'secret!'
+app.config['TEMP_PATH'] = config.TEMP_PATH
 
 # Make sure we can catch websocket events
 socketio = SocketIO(app)

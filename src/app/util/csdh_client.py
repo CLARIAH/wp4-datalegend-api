@@ -5,6 +5,7 @@ import logging
 from SPARQLWrapper import SPARQLWrapper, JSON
 import sparql_client as sc
 from rdflib import Graph
+from threading import Thread
 
 
 from app import app
@@ -416,7 +417,9 @@ def get_datasets():
 
 
 def delete_dataset(uri):
-#     log.warning("TODO: Untested! Unsafe!")
+    log.warning("TODO: Untested! Unsafe!")
+    uri = uri.strip()
+
     query = """
         PREFIX np: <http://www.nanopub.org/nschema#>
 
@@ -428,32 +431,42 @@ def delete_dataset(uri):
         }}
     """.format(URI=uri)
 
-    clear_query = """
-        CLEAR GRAPH <{}>
-    """
+    def clear_graph(uri):
+        clear_query_template = """
+            DEFINE sql:log-enable 2
+            CLEAR GRAPH <{}>
+        """
+        clear_query = clear_query_template.format(uri)
+        log.debug("Clearing graph {}".format(uri))
+        return sc.sparql_update(clear_query)
 
-    delete_query = """
-        PREFIX np: <http://www.nanopub.org/nschema#>
+    def delete_publication(uri):
+        delete_query = """
+            PREFIX np: <http://www.nanopub.org/nschema#>
 
-        DELETE {{ GRAPH ?g {{
-          <{URI}> a         np:Nanopublication ;
-               np:hasAssertion       ?assertion_uri ;
-               np:hasPublicationInfo ?pubinfo_uri ;
-               np:hasProvenance      ?provenance_uri .
-            ?assertion_uri a    np:Assertion . 
-            ?pubinfo_uri a      np:PublicationInfo . 
-            ?provenance_uri a   np:Provenance . 
-        }}}}
-        WHERE {{ GRAPH ?g {{
-          <{URI}> a         np:Nanopublication ;
-               np:hasAssertion       ?assertion_uri ;
-               np:hasPublicationInfo ?pubinfo_uri ;
-               np:hasProvenance      ?provenance_uri .
-            ?assertion_uri a    np:Assertion . 
-            ?pubinfo_uri a      np:PublicationInfo . 
-            ?provenance_uri a   np:Provenance . 
-        }}}}
-    """.format(URI=uri)
+            DELETE {{ GRAPH ?g {{
+              <{URI}> a         np:Nanopublication ;
+                   np:hasAssertion       ?assertion_uri ;
+                   np:hasPublicationInfo ?pubinfo_uri ;
+                   np:hasProvenance      ?provenance_uri .
+                ?assertion_uri a    np:Assertion .
+                ?pubinfo_uri a      np:PublicationInfo .
+                ?provenance_uri a   np:Provenance .
+            }}}}
+            WHERE {{ GRAPH ?g {{
+              <{URI}> a         np:Nanopublication ;
+                   np:hasAssertion       ?assertion_uri ;
+                   np:hasPublicationInfo ?pubinfo_uri ;
+                   np:hasProvenance      ?provenance_uri .
+                ?assertion_uri a    np:Assertion .
+                ?pubinfo_uri a      np:PublicationInfo .
+                ?provenance_uri a   np:Provenance .
+            }}}}
+        """.format(URI=uri)
+
+        log.debug("Removing the nanopublication {}...".format(uri))
+        return sc.sparql_update(delete_query)
+
 
     nanopub = {}
 
@@ -463,18 +476,18 @@ def delete_dataset(uri):
         nanopub_results = sc.sparql(query)
         if len(nanopub_results) > 0:
             nanopub = sc.dictize(nanopub_results)[0]
-            
-            clear_assertion = clear_query.format(nanopub['assertion_uri'])
-            sc.sparql_update(clear_assertion)
-            clear_provenance = clear_query.format(nanopub['provenance_uri'])
-            sc.sparql_update(clear_provenance)
-            clear_pubinfo = clear_query.format(nanopub['pubinfo_uri'])
-            sc.sparql_update(clear_pubinfo)
-            
-            sc.sparql_update(delete_query)
-            
-            return "nanopublication deleted"
-            
+            log.debug(nanopub)
+
+            t_assertion = Thread(target=clear_graph, args=(nanopub['assertion_uri'],))
+            t_assertion.start()
+            t_provenance = Thread(target=clear_graph, args=(nanopub['provenance_uri'],))
+            t_provenance.start()
+            t_pubinfo = Thread(target=clear_graph, args=(nanopub['pubinfo_uri'],))
+            t_pubinfo.start()
+            t_publication = Thread(target=delete_publication, args=(uri,))
+            t_publication.start()
+
+            return "Called delete functions for {}".format(uri)
         else:
             return "No matching nanopublication found"
 
@@ -482,6 +495,7 @@ def delete_dataset(uri):
     except Exception as e:
         log.error(e)
         log.error("Could not retrieve anything from the SDH")
+        log.debug(nanopub_results)
         return "Could not retrieve anything from the SDH"
 
     return "Not implemented"

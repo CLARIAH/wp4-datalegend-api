@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 # Copy this file to 'config.py' and make necessary changes for your local setup.
-import os
 
-base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                         "<RELATIVE PATH TO DATA FOLDER>"))
+# Add the converters module to the python path
+import sys
+sys.path.append("wp4-converters/src")
+
+# Path to a directory where temporary files can be written
+# (must be read/writable by the user that owns of the server process)
+TEMP_PATH = "/tmp"
 
 # Base URI for resources
 QBR_BASE = "http://data.socialhistory.org/resource/"
@@ -37,5 +41,5 @@ AUTH = ('admin', 'admin')
 
 # Respond to GitHub webhooks
 FOLLOW_GITHUB = True
-FOLLOW_REPO = 'https://github.com/CLARIAH/wp4-csdh-api'
+FOLLOW_REPO = 'https://github.com/CLARIAH/wp4-datalegend-api'
 FOLLOW_REF = 'refs/heads/master'

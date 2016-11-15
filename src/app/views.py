@@ -2,34 +2,28 @@
 from flask import render_template, request, jsonify
 from flask_swagger import swagger
 from werkzeug.exceptions import HTTPException
-from rdflib import ConjunctiveGraph, Namespace, Literal, URIRef, RDF, RDFS, XSD
-
-import gzip
-import shutil
-
+from rdflib import ConjunctiveGraph
 import traceback
 import logging
 import json
 import os
+import requests
 import gevent.subprocess as sp
 
 import iribaker
 
 import config
+
+# Converter can only be imported after the config (since that module sets the python path)
+import converter
+
 import util.sparql_client as sc
 import util.file_client as fc
-import util.git_client as git_client
+import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
 
 from app import app, socketio
-
-import importlib
-converter = importlib.import_module("app.wp4-converters.src.converter")
-
-
-
-# import datacube.converter
 
 log = app.logger
 log.setLevel(logging.DEBUG)
@@ -265,11 +259,11 @@ def get_dataset_definition():
                         the file you want to load, and specify its name"""))
 
     dataset_name = os.path.basename(dataset_path)
-    # Create an absolute path
-    absolute_dataset_path = os.path.join(config.base_path, dataset_path)
+    # DEPRECATED: Create an absolute path
+    # absolute_dataset_path = os.path.join(config.TEMP_PATH, dataset_path)
 
     log.debug('Dataset path: ' + dataset_path)
-    dataset_definition = fc.load(dataset_name, dataset_path, absolute_dataset_path)
+    dataset_definition = gc.load(dataset_name, dataset_path)
 
     return jsonify(dataset_definition)
 
@@ -533,10 +527,13 @@ def dataset_save():
     req_json = request.get_json(force=True)
 
     dataset = req_json['dataset']
-    dataset_path = os.path.join(config.base_path, dataset['file'])
+    # dataset_path = os.path.join(config.TEMP_PATH, dataset['file'])
 
-    fc.write_cache(dataset_path, {'dataset': dataset})
+    gc.write_cache(dataset['file'], {'dataset': dataset})
+
+    # fc.write_cache(dataset_path, {'dataset': dataset})
     return jsonify({'code': 200, 'message': 'Success'})
+
 
 @app.route('/dataset/delete', methods=['GET'])
 def dataset_delete():
@@ -659,28 +656,44 @@ def dataset_submit():
 
     req_json = request.get_json(force=True)
     dataset = req_json['dataset']
-    user = req_json['user']    
-    outfile = config.base_path + "/" + dataset['file'].split(".")[0] + ".nq"
-    
-#     source_hash = git_client.add_file(dataset['file'], user['name'], user['email'])
-#     log.debug("Using {} as dataset hash".format(source_hash))
+    user = req_json['user']
+
+    log.debug("Writing cache to gitlab")
+    gc.write_cache(dataset['file'], {'dataset': dataset})
+
+    source_filename = gc.get_local_file_path(dataset['file'])
+    log.debug("Converter will be reading from {}".format(source_filename))
+
+    outfile = dataset['file'] + ".nq"
+    target_filename = gc.get_local_file_path(outfile)
+    log.debug("Converter will be writing to {}".format(target_filename))
 
     log.debug("Starting conversion ...")
-    c = converter.Converter(dataset, config.base_path, user, target=outfile)
+    if 'path' in dataset:
+        # TODO: check when there's a path in dataset... where does this happen, and what is it for?
+        log.debug("There's a path in this dataset")
+        c = converter.Converter(dataset, '/tmp/', user, source=dataset['path'], target=target_filename)
+    else:
+        log.debug("There is no path in this dataset, filename is {}".format(source_filename))
+        c = converter.Converter(dataset, '/tmp/', user, source=source_filename, target=target_filename)
+
     c.setProcesses(1)
     c.convert()
     log.debug("Conversion successful")
-    
-    log.debug("Gzipping dataset... ")
-    with open(outfile, 'rb') as f_in, gzip.open(outfile + ".gz", 'wb') as f_out:
-        shutil.copyfileobj(f_in, f_out)
-    
+
+    with open(target_filename, "rb") as nquads_file:
+        data = nquads_file.read()
+
+    log.debug("Adding data to gitlab... ")
+    file_info = gc.add_file(outfile, data)
+    log.debug("Added to gitlab: {} ({})".format(file_info['url'], file_info['commit_id']))
+
     log.debug("Parsing dataset... ")
     g = ConjunctiveGraph()
-    data = open(outfile, "rb")
-    g.parse(data, format="nquads")
+    # TODO: This is really inefficient... why are we posting each graph separately?
+    g.parse(data=data, format="nquads")
     log.debug("DataSet parsed")
-    
+
     for graph in g.contexts():
         log.debug(g)
         graph_uri = graph.identifier
@@ -688,27 +701,9 @@ def dataset_submit():
         sc.post_data(graph.serialize(format='turtle'), graph_uri=graph_uri)
         log.debug("... done")
 
-    return jsonify({'code': 200, 'message': 'Succesfully submitted datastructure definition to CSDH'})
-
-
-
-
-#     old version 
-#     rdf_dataset = datacube.converter.data_structure_definition(
-#         user,
-#         dataset['name'],
-#         dataset['uri'],
-#         dataset['variables'],
-#         dataset['file'],
-#         source_hash)
-#     log.debug("... done")
-
-#     log.debug("Starting serializer ...")
-#     trig = datacube.converter.serializeTrig(rdf_dataset)
-#     with open('latest_update.trig', 'w') as f:
-#         f.write(trig)
-#     log.debug("... done")
- 
+    return jsonify({'code': 200,
+                    'message': 'Succesfully submitted converted data to CSDH',
+                    'url': file_info['url']})
 
 
 @app.route('/browse', methods=['GET'])
@@ -726,6 +721,11 @@ def browse():
           required: true
           type: string
           defaultValue: .
+        - name: user
+          in: query
+          description: The email address of the Google user id
+          required: true
+          type: string
       responses:
         '200':
           description: Path retrieved
@@ -781,13 +781,20 @@ def browse():
               message:
                 type: string
     """
-    path = request.args.get('path', None)
+    path = request.args.get('path', False)
+    username = request.args.get('user', False)
 
-    if not path:
-        raise Exception('Must specify a path!')
+    if not(path and username):
+        log.debug("{}/{}".format(path, username))
+        raise Exception('Must specify path and username!')
 
-    log.debug('Will browse absolute path: {}/{}'.format(config.base_path, path))
-    filelist, parent = fc.browse(config.base_path, path)
+    # Make sure users can only browse their own datasets
+    # TODO: This is only a cosmetic safety against users browsing data uploaded by others.
+    if path == '.' or path == '/':
+        path = '/{}'.format(username)
+
+    log.debug('Will browse path: {}'.format(path))
+    filelist, parent = gc.browse(None, path)
 
     return jsonify({'path': path, 'parent': parent, 'files': filelist})
 
@@ -886,6 +893,11 @@ def dataverse_definition():
           required: false
           type: string
           defaultValue: 2531997
+        - name: user
+          in: query
+          description: The email address of the Google user id
+          required: true
+          type: string
       tags:
         - Dataverse
       responses:
@@ -900,16 +912,83 @@ def dataverse_definition():
     """
     dataset_id = request.args.get('id', False)
     dataset_name = request.args.get('name', False)
+    username = request.args.get('user', False)
 
+    log.debug("Dataverse dataset: {}/{}".format(dataset_id, dataset_name))
     # Check whether a file has been provided
-    if not (dataset_id and dataset_name):
-        raise(Exception("""You should provide a file id and name"""))
+    if not(dataset_id and dataset_name and username):
+        raise(Exception("""You should provide a file id, name and user"""))
 
-    dataverse_connection = dc.Connection()
-    dataset_absolute_path = dataverse_connection.access(dataset_name, dataset_id, config.base_path)
+    dataset_url = dc.Connection().get_access_url(dataset_id)
+    log.debug("Dataverse url: {}".format(dataset_url))
 
-    dataset_relative_path = os.path.relpath(dataset_absolute_path, config.base_path)
-    dataset_definition = fc.load(dataset_name, dataset_relative_path, dataset_absolute_path)
+    response = requests.get(dataset_url)
+
+    dataset_path = "{}/{}".format(username, dataset_name)
+
+    log.debug(dataset_path)
+    if response.status_code == 200:
+        gc.add_file(dataset_path, response.content)
+
+        dataset_definition = gc.load(dataset_path, dataset_path)
+        return jsonify(dataset_definition)
+    else:
+        raise(Exception("The dataset with URI {} could not be retrieved from Dataverse".format(dataset_url)))
+
+
+@app.route('/web/definition')
+def web_definition():
+    """
+    Get dataset metadata from a URL
+    Loads the metadata for a file specified by the url and name parameters.
+    Response is the same as for `/dataset/definition`
+    ---
+      parameters:
+        - name: name
+          in: query
+          description: The name of the dataset file that is to be loaded
+          required: false
+          type: string
+          defaultValue: "Mortality.monthly_MadrasIndia.1916_1921.tab"
+        - name: url
+          in: query
+          description:
+            The URL address of the file that is to be loaded
+          required: false
+          type: string
+          defaultValue: "http://example.com/interesting/file.csv"
+      tags:
+        - Dataverse
+      responses:
+        '200':
+          description: Dataset metadata retrieved
+          schema:
+            $ref: "#/definitions/DatasetSchema"
+        default:
+          description: Unexpected error
+          schema:
+            $ref: "#/definitions/Message"
+    """
+    dataset_url = request.args.get('url', False)
+    dataset_name = request.args.get('name', False)
+    username = request.args.get('user', False)
+
+    log.debug("Web dataset: {}/{}".format(dataset_url, dataset_name))
+    # Check whether a file has been provided
+    if not(dataset_url and dataset_name and username):
+        raise(Exception("""You should provide a file id, name and user"""))
+
+    response = requests.get(dataset_url)
+
+    dataset_path = "{}/{}".format(username, dataset_name)
+
+    if response.status_code == 200:
+        gc.add_file(dataset_path, response.content)
+
+        dataset_definition = gc.load(dataset_path, dataset_path)
+        return jsonify(dataset_definition)
+    else:
+        raise(Exception("The dataset with URI {} could not be retrieved from the Web".format(dataset_url)))
 
     return jsonify(dataset_definition)
 

@@ -14,24 +14,34 @@ import iribaker
 import magic
 import os
 import traceback
-from app import config
+import logging
+from app import config, app
+
+log = app.logger
+log.setLevel(logging.DEBUG)
 
 
 class Adapter(object):
-    def __init__(self, dataset):
+
+    def __init__(self, dataset, file_object=None):
         self.dataset = dataset
 
-        (head, dataset_local_name) = os.path.split(dataset['filename'])
-        (dataset_name, extension) = os.path.splitext(dataset_local_name)
+        if 'name' not in dataset:
+            (head, dataset_local_name) = os.path.split(dataset['filename'])
+            (dataset_name, extension) = os.path.splitext(dataset_local_name)
+            self.dataset_name = dataset_name
+        else:
+            self.dataset_name = dataset['name']
 
-        self.dataset_name = dataset_name
-        self.dataset_uri = iribaker.to_iri(config.QBR_BASE + dataset_name)
+        if 'version' in dataset:
+            self.dataset_uri = iribaker.to_iri(
+                config.QBR_BASE + dataset['version'] + '/' + self.dataset_name)
+        else:
+            self.dataset_uri = iribaker.to_iri(
+                config.QBR_BASE + self.dataset_name)
 
         print "Initialized adapter"
         return
-
-    def get_data(self):
-        return self.data
 
     def get_reader(self):
         return self.reader
@@ -59,7 +69,8 @@ class Adapter(object):
             metadata_filename = self.dataset['metadata']
 
             with open(metadata_filename, "r") as metadata_file:
-                metadata_reader = csv.reader(metadata_file, delimiter=";", quotechar="\"")
+                metadata_reader = csv.reader(
+                    metadata_file, delimiter=";", quotechar="\"")
 
                 for l in metadata_reader:
                     metadata[l[0].strip()] = l[1].strip()
@@ -88,6 +99,12 @@ class Adapter(object):
         else:
             print "No header or no metadata present"
             return False
+
+    def get_data(self):
+        """
+        Return the CSV file as a dictionary ('column': [list of values])
+        """
+        return self.data.fillna(value='').to_dict(orient='list')
 
     def get_values(self):
         """
@@ -130,7 +147,8 @@ class Adapter(object):
             codelist_uri = iribaker.to_iri("{}/codelist/{}"
                                            .format(self.dataset_uri, col))
 
-            codelist_label = "Codelist generated from the values for '{}'".format(col)
+            codelist_label = "Codelist generated from the values for '{}'".format(
+                col)
 
             codelist = {
                 'original': {
@@ -216,19 +234,25 @@ class Adapter(object):
 
 class CsvAdapter(Adapter):
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, file_object=None):
         """Initializes an adapter for reading a CSV dataset"""
         super(CsvAdapter, self).__init__(dataset)
 
         if not dataset['format'] == 'text/csv':
-            raise Exception('This is a CSV adapter, not {}'.format(dataset['format']))
+            raise Exception(
+                'This is a CSV adapter, not {}'.format(dataset['format']))
 
         self.filename = dataset['filename']
 
         self.has_header = dataset['header']
 
-        with open(self.filename, 'r') as fn:
-            self.data = pd.read_csv(fn, index_col=False, parse_dates=True, encoding='utf-8')
+        if file_object is None:
+            with open(self.filename, 'r') as fn:
+                self.data = pd.read_csv(
+                    fn, index_col=False, parse_dates=True, encoding='utf-8')
+        else:
+            self.data = pd.read_csv(
+                file_object, index_col=False, parse_dates=True, encoding='utf-8')
 
         if self.has_header:
             self.header = list(self.data.columns)
@@ -245,41 +269,51 @@ class CsvAdapter(Adapter):
 
 class ExcelAdapter(Adapter):
 
-    def __init__(self, dataset, clio=True):
+    def __init__(self, dataset, file_object=None, clio=False):
         """Initializes an adapter for reading an Excel dataset"""
         super(ExcelAdapter, self).__init__(dataset)
 
-        if not (dataset['format'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or dataset['format'] == 'application/vnd.ms-excel'):
-            raise Exception('This is an Excel adapter, not {}'.format(dataset['format']))
+        if not (dataset['format'] ==
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                or dataset['format'] == 'application/vnd.ms-excel'):
+            raise Exception(
+                'This is an Excel adapter, not {}'.format(dataset['format']))
 
         self.filename = dataset['filename']
 
         self.has_header = dataset['header']
 
-        with open(self.filename, 'r') as fn:
-            # If this is ClioInfra data, we skip the first two rows of the Worksheet
-            if clio:
-                skiprows = [0, 1]
-                header = 0
-            else:
-                skiprows = None
-                header = 0
+        # If this is ClioInfra data, we skip the first two rows of the
+        # Worksheet
+        if clio:
+            skiprows = [0, 1]
+            header = 0
+        else:
+            skiprows = None
+            header = 0
 
-            self.data = pd.read_excel(fn, skiprows=skiprows, header=header)
+        if file_object is None:
+            with open(self.filename, 'r') as fn:
+                self.data = pd.read_excel(fn, skiprows=skiprows, header=header)
+        else:
+            self.data = pd.read_excel(
+                file_object, skiprows=skiprows, header=header)
 
-            if clio:
-                # Unpivot the table, excluding the first 6 columns (webmapper ids, country, period)
-                id_vars = [
-                    'Webmapper code',
-                    'Webmapper numeric code',
-                    'ccode',
-                    'country name',
-                    'start year',
-                    'end year'
-                ]
-                self.data = pd.melt(self.data, id_vars=id_vars, var_name='year', value_name='GDPPC')
+        if clio:
+            # Unpivot the table, excluding the first 6 columns (webmapper ids,
+            # country, period)
+            id_vars = [
+                'Webmapper code',
+                'Webmapper numeric code',
+                'ccode',
+                'country name',
+                'start year',
+                'end year'
+            ]
+            self.data = pd.melt(self.data, id_vars=id_vars,
+                                var_name='year', value_name='GDPPC')
 
-                self.data = self.data[np.isfinite(self.data['GDPPC'])]
+            self.data = self.data[np.isfinite(self.data['GDPPC'])]
 
         if self.has_header:
             self.header = list(self.data.columns)
@@ -296,19 +330,26 @@ class ExcelAdapter(Adapter):
 
 class TabAdapter(Adapter):
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, file_object=None):
         """Initializes an adapter for reading a Tab-delimited dataset"""
         super(TabAdapter, self).__init__(dataset)
 
         if dataset['format'] not in ['text/tab-separated-values', 'text/plain']:
-            raise Exception('This is a Tab adapter, not {}'.format(dataset['format']))
+            raise Exception(
+                'This is a Tab adapter, not {}'.format(dataset['format']))
 
         self.filename = dataset['filename']
 
         self.has_header = dataset['header']
 
-        with open(self.filename, 'r') as fn:
-            self.data = pd.DataFrame.from_csv(fn, index_col=False, sep='\t')
+        if file_object is None:
+            with open(self.filename, 'r') as fn:
+                self.data = pd.DataFrame.from_csv(
+                    fn, index_col=False, sep='\t')
+        else:
+            self.data = pd.DataFrame.from_csv(
+                file_object, index_col=False, sep='\t')
+
         if self.has_header:
             self.header = list(self.data.columns)
         elif self.metadata:
@@ -332,8 +373,8 @@ mappings = {
 }
 
 
-def get_adapter(dataset):
-
+def get_adapter(dataset, file_object=None):
+    log.debug("Filename: {}".format(dataset['filename']))
     if 'format' in dataset:
         mimetype = dataset['format']
     elif dataset['filename'].endswith('.tsv') or dataset['filename'].endswith('.tab'):
@@ -343,6 +384,12 @@ def get_adapter(dataset):
     elif dataset['filename'].endswith('.csv'):
         mimetype = 'text/csv'
         # Make sure we set the guessed mimetype as format for the dataset
+        dataset['format'] = mimetype
+    elif dataset['filename'].endswith('.xls'):
+        mimetype = 'application/vnd.ms-excel'
+        dataset['format'] = mimetype
+    elif dataset['filename'].endswith('.xlsx'):
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         dataset['format'] = mimetype
     else:
         csv_fileh = open(dataset['filename'], 'rb')
@@ -368,16 +415,18 @@ def get_adapter(dataset):
                 mimetype = 'text/csv'
 
         except csv.Error:
-            # File appears not to be in CSV format; try libmagic (not very useful)
+            # File appears not to be in CSV format; try libmagic (not very
+            # useful)
             mymagic = magic.Magic(mime=True)
-            mimetype = mymagic.from_buffer(open(dataset['filename']).read(1024), mime=True)
+            mimetype = mymagic.from_buffer(
+                open(dataset['filename']).read(1024))
 
         # Make sure we set the guessed mimetype as format for the dataset
         dataset['format'] = mimetype
 
     try:
         adapterClass = mappings[mimetype]
-        adapter = adapterClass(dataset)
+        adapter = adapterClass(dataset, file_object=file_object)
 
         return adapter
     except Exception as e:

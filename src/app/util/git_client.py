@@ -1,7 +1,7 @@
 import app.config as config
 import gevent.subprocess as sp
 
-DATA_PATH = config.base_path
+DATA_PATH = config.TEMP_PATH
 
 
 def add_file(absolute_path, author, email):
