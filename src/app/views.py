@@ -18,7 +18,6 @@ import config
 import converter
 
 import util.sparql_client as sc
-import util.file_client as fc
 import util.gitlab_client as gc
 import util.dataverse_client as dc
 import util.csdh_client as cc
@@ -42,7 +41,7 @@ def apidocs():
 @app.route('/specs')
 def specs():
     """
-    Provides Swagger specification for the CSDH API
+    Provides Swagger specification for the datalegend API
     ---
     tags:
         - Base
@@ -56,10 +55,9 @@ def specs():
             $ref: "#/definitions/Message"
     """
     swag = swagger(app)
-    swag['info']['version'] = "0.0.1"
-    swag['info']['title'] = "CSDH API"
-    swag['info']['description'] = """API Specification for
-                                     the CLARIAH Structured Data Hub"""
+    swag['info']['version'] = "0.0.2"
+    swag['info']['title'] = "datalegend API"
+    swag['info']['description'] = """API Specification for datalegend"""
     # swag['host'] = "api.clariah-sdh.eculture.labs.vu.nl"
     swag['host'] = app.config['SERVER_NAME']
     swag['schemes'] = ['http']
