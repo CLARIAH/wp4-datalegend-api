@@ -325,7 +325,7 @@ def get_community_dimensions():
 def get_community_schemes():
     """
     Get a list of known community-defined concept schemes
-    Retrieves concept schemes from the LOD Cloud and the CSDH
+    Retrieves concept schemes from the LOD Cloud and the datalegend
     ---
     tags:
         - Community
@@ -366,7 +366,7 @@ def get_community_schemes():
 @app.route('/community/definition', methods=['GET'])
 def get_community_definition():
     """
-    Get the SDMX variable definition from the Web, LOD Cloud or CSDH if available
+    Get the SDMX variable definition from the Web, LOD Cloud or datalegend if available
     First checks whether we already know the variable, otherwise resolves the URI
     of the variable as a URL, and retrieves its definition.
     ---
@@ -489,7 +489,7 @@ def codelist():
         codelist = cc.get_concepts(uri)
 
         if codelist == []:
-            raise(Exception("Could not retrieve anything from LOD or CSDH"))
+            raise(Exception("Could not retrieve anything from LOD or datalegend"))
         else:
             return jsonify({'concepts': codelist})
     else:
@@ -499,8 +499,8 @@ def codelist():
 @app.route('/dataset/save', methods=['POST'])
 def dataset_save():
     """
-    Save the dataset to the CSDH file cache
-    Note that this does not convert the dataset to RDF, nor does it upload it to the CSDH repository
+    Save the dataset to the datalegend file cache
+    Note that this does not convert the dataset to RDF, nor does it upload it to the datalegend repository
     ---
     tags:
         - Dataset
@@ -536,7 +536,7 @@ def dataset_save():
 @app.route('/dataset/delete', methods=['GET'])
 def dataset_delete():
     """
-    Remove a dataset from the CSDH
+    Remove a dataset from the datalegend
     Note that this requires one to specify the Nanopublication URI, not the dataset URI
     **WARNING**: There is no authentication/authorization in place!
     ---
@@ -571,7 +571,7 @@ def dataset_delete():
 @app.route('/dataset/list', methods=['GET'])
 def dataset_list():
     """
-    List the datasets currently available on the CSDH
+    List the datasets currently available on the datalegend
     ---
     tags:
         - Dataset
@@ -621,16 +621,16 @@ def dataset_list():
 @app.route('/dataset/submit', methods=['POST'])
 def dataset_submit():
     """
-    Submit the dataset definition to the CSDH
+    Submit the dataset definition to the datalegend
     Uses the DataCube converter to convert the JSON representation of variables to RDF DataCube and commits
-    the resulting RDF to the CSDH repository
+    the resulting RDF to the datalegend repository
     ---
     tags:
         - Dataset
     parameters:
         - name: dataset
           in: body
-          description: The dataset definition that is to be converted and committed to the CSDH repository
+          description: The dataset definition that is to be converted and committed to the datalegend repository
           required: true
           schema:
             type: object
@@ -700,7 +700,7 @@ def dataset_submit():
         log.debug("... done")
 
     return jsonify({'code': 200,
-                    'message': 'Succesfully submitted converted data to CSDH',
+                    'message': 'Succesfully submitted converted data to datalegend',
                     'url': file_info['url']})
 
 
