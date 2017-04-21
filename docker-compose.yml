@@ -1,0 +1,17 @@
+version: '3'
+services:
+  datalegend-api:
+    image: clariah/datalegend-api:1.0.1
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - ENDPOINT_URL=http://virtuoso.clariah-sdh.eculture.labs.vu.nl/sparql
+      - UPDATE_URL=http://virtuoso.clariah-sdh.eculture.labs.vu.nl/sparql
+      - CRUD_URL=http://virtuoso.clariah-sdh.eculture.labs.vu.nl/sparql-graph-crud-auth
+      - CRUD_USER=<USER>
+      - CRUD_PASS=<PW>
+      - DATAVERSE_HOST=dataverse.harvard.edu
+      - DATAVERSE_TOKEN=<TOKEN>
