@@ -26,7 +26,7 @@ CRUD_URL = os.environ('CRUD_URL') or '<CRUD URL>'
 from requests.auth import HTTPDigestAuth
 CRUD_USER = os.environ('CRUD_USER') or '<USER>'
 CRUD_PASS = os.environ('CRUD_PASS') or '<PASS>'
-CRUD_AUTH = os.environ('CRUD_AUTH') or HTTPDigestAuth(CRUD_USER, CRUD_PASS)
+CRUD_AUTH = HTTPDigestAuth(CRUD_USER, CRUD_PASS)
 
 # Dataverse configuration
 DATAVERSE_HOST = os.environ('DATAVERSE_HOST') or '<DATAVERSE_HOST>'  # e.g. dataverse.harvard.edu (without the http:// bit)
